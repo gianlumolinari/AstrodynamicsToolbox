@@ -1,5 +1,5 @@
 function sol = solveIzzo(r1, r2, tof, mu, longWay)
-%SOLVEIZZO Single-revolution Izzo-style Lambert solver.
+%SOLVEIZZO Single-revolution Izzo-style Lambert solver using Householder.
 %
 % INPUTS
 %   r1      : initial position vector [km]
@@ -50,7 +50,6 @@ ih = ih / ihNorm;
 lambda2 = 1 - c/s;
 lambda = sqrt(lambda2);
 
-% Orientation / transfer direction
 if (r1(1)*r2(2) - r1(2)*r2(1)) < 0
     lambda = -lambda;
     it1 = cross(ir1, ih);
@@ -60,17 +59,16 @@ else
     it2 = cross(ih, ir2);
 end
 
-% Apply long-way choice by flipping lambda sign
 if longWay
     lambda = -lambda;
     it1 = -it1;
     it2 = -it2;
 end
 
-% Non-dimensional TOF
+% Non-dimensional target TOF
 Tstar = sqrt(2*mu / s^3) * tof;
 
-% Single-revolution initial guess from Izzo Eq. (30)-type logic
+% Initial guess based on Izzo single-rev formulas
 T0 = acos(lambda) + lambda*sqrt(1 - lambda^2);
 T1 = (2/3) * (1 - lambda^3);
 
@@ -83,40 +81,46 @@ else
 end
 
 tol = 1e-12;
-maxIter = 50;
+maxIter = 20;
 converged = false;
 
 for k = 1:maxIter
-    [T, y] = astro.lambert.computeTOF_Izzo(x, lambda, 0);
-    F = T - Tstar;
-
-    if abs(F) < tol
+    tofData = astro.lambert.computeTOF_Izzo(x, lambda, 0);
+    
+    f   = tofData.T - Tstar;
+    fp  = tofData.dTdx;
+    fpp = tofData.d2Tdx2;
+    fppp = tofData.d3Tdx3;
+    
+    if abs(f) < tol
         converged = true;
         break
     end
-
-    % Numerical derivative for now
-    dx = 1e-7;
-    [Tp, ~] = astro.lambert.computeTOF_Izzo(x + dx, lambda, 0);
-    dFdx = (Tp - T) / dx;
-
-    if abs(dFdx) < 1e-14 || ~isfinite(dFdx)
-        error('Izzo solver: derivative breakdown.');
+    
+    % If too close to parabolic singular higher derivatives, fall back to Newton
+    if ~isfinite(fpp) || ~isfinite(fppp)
+        dx = -f / fp;
+    else
+        % Householder update as in Izzo paper discussion
+        num = f * (fp^2 - 0.5*f*fpp);
+        den = fp * (fp^2 - f*fpp) + (f^2 * fppp)/6;
+        dx = -num / den;
     end
-
-    xNew = x - F / dFdx;
-
+    
+    xNew = x + dx;
+    
     if ~isfinite(xNew)
         error('Izzo solver: non-finite iterate.');
     end
-
+    
     x = xNew;
 end
 
-[T, y] = astro.lambert.computeTOF_Izzo(x, lambda, 0);
-F = T - Tstar;
+tofData = astro.lambert.computeTOF_Izzo(x, lambda, 0);
+F = tofData.T - Tstar;
+y = tofData.y;
 
-% Velocity reconstruction from Izzo algorithm
+% Velocity reconstruction
 gamma = sqrt(mu * s / 2);
 rho   = (r1n - r2n) / c;
 sigma = sqrt(1 - rho^2);
@@ -138,5 +142,5 @@ sol.x = x;
 sol.y = y;
 sol.lambda = lambda;
 sol.method = 'Izzo';
-sol.backend = 'real-x-iteration-corrected';
+sol.backend = 'householder-analytical-derivatives';
 end

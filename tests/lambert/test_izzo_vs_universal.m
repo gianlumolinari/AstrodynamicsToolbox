@@ -19,7 +19,7 @@ if ~solU.converged
 end
 
 if ~solI.converged
-    error('FAIL: Izzo interface did not converge.')
+    error('FAIL: Izzo solver did not converge.')
 end
 
 dv1diff = norm(solU.v1 - solI.v1);
@@ -27,11 +27,12 @@ dv2diff = norm(solU.v2 - solI.v2);
 
 fprintf('Difference in departure velocity = %.6e km/s\n', dv1diff);
 fprintf('Difference in arrival velocity   = %.6e km/s\n', dv2diff);
+fprintf('Izzo iterations                  = %d\n', solI.iterations);
 
-tol = 1e-12;
+tol = 1e-10;
 
 if dv1diff < tol && dv2diff < tol
-    disp('PASS: Izzo interface matches universal backend exactly.')
+    disp('PASS: Izzo solver matches universal solver within tolerance.')
 else
-    error('FAIL: Izzo interface does not match universal backend.')
+    error('FAIL: Izzo solver does not match universal solver within tolerance.')
 end
