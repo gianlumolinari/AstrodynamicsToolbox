@@ -7,7 +7,6 @@ startup
 
 % ==========================================================
 % Earth-Mars porkchop plot
-% Repo-inspired version:
 %   - contour lines only
 %   - C3 contours
 %   - thick magenta TOF contours
