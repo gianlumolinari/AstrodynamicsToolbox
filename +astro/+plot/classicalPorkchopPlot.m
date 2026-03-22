@@ -1,6 +1,23 @@
 function ax = classicalPorkchopPlot(depDates, arrDates, metricGrid, metricLevels, ...
     tofGrid, tofLevels, plotTitle, metricLabel, bestPoint)
-%CLASSICALPORKCHOPPLOT Creates a classical contour-style porkchop plot.
+%CLASSICALPORKCHOPPLOT Smoothed classical contour-style porkchop plot.
+%
+% INPUTS
+%   depDates     : vector of departure datetimes
+%   arrDates     : vector of arrival datetimes
+%   metricGrid   : matrix [numArr x numDep]
+%   metricLevels : contour levels for metric
+%   tofGrid      : matrix [numArr x numDep], time of flight in days
+%   tofLevels    : contour levels for TOF
+%   plotTitle    : title string
+%   metricLabel  : colorbar label
+%   bestPoint    : optional struct with fields:
+%                  .depDate
+%                  .arrDate
+%                  .label
+%
+% OUTPUT
+%   ax : axes handle
 
 if nargin < 9
     bestPoint = [];
@@ -11,32 +28,40 @@ arrNum = datenum(arrDates);
 
 [DEP, ARR] = meshgrid(depNum, arrNum);
 
-figureColor = 'w';
-axesColor = 'w';
+% ----------------------------------------------------------
+% Interpolate to a finer mesh for smoother classical contours
+% ----------------------------------------------------------
+depFine = linspace(min(depNum), max(depNum), 4*numel(depNum));
+arrFine = linspace(min(arrNum), max(arrNum), 4*numel(arrNum));
+[DEPF, ARRF] = meshgrid(depFine, arrFine);
 
-set(gcf, 'Color', figureColor)
-set(gca, 'Color', axesColor)
+metricFine = interp2(DEP, ARR, metricGrid, DEPF, ARRF, 'linear');
+tofFine    = interp2(DEP, ARR, tofGrid,    DEPF, ARRF, 'linear');
 
+% ----------------------------------------------------------
+% Plot
+% ----------------------------------------------------------
+set(gcf, 'Color', 'w')
+set(gca, 'Color', 'w')
 hold on
 box on
 grid on
 
-% Colored contours for main metric
-[Cm, hm] = contour(DEP, ARR, metricGrid, metricLevels, 'LineWidth', 1.3);
-clabel(Cm, hm, 'FontSize', 8, 'Color', 'k')
-
+% Light filled background
+contourf(DEPF, ARRF, metricFine, 100, 'LineStyle', 'none');
 colormap(turbo)
-caxis([min(metricLevels) max(metricLevels)])
 cb = colorbar;
 ylabel(cb, metricLabel)
 
-% Black TOF contours
-if ~isempty(tofGrid)
-    [Ct, ht] = contour(DEP, ARR, tofGrid, tofLevels, 'k', 'LineWidth', 1.5);
-    clabel(Ct, ht, 'FontSize', 8, 'Color', 'k', 'FontWeight', 'bold')
-end
+% Colored metric contours
+[Cm, hm] = contour(DEPF, ARRF, metricFine, metricLevels, 'LineWidth', 1.2);
+clabel(Cm, hm, 'FontSize', 8, 'Color', 'k')
 
-% Best point marker
+% Black TOF contours
+[Ct, ht] = contour(DEPF, ARRF, tofFine, tofLevels, 'k', 'LineWidth', 1.4);
+clabel(Ct, ht, 'FontSize', 8, 'Color', 'k', 'FontWeight', 'bold')
+
+% Best point
 if ~isempty(bestPoint)
     xBest = datenum(bestPoint.depDate);
     yBest = datenum(bestPoint.arrDate);

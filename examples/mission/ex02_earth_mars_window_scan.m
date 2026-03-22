@@ -6,231 +6,262 @@ cd('/Users/gianlucamolinari/Desktop/astroToolbox')
 startup
 
 % ==========================================================
-% Earth-Mars porkchop-style window scan using Horizons + Izzo
+% Earth-Mars porkchop plot
+% Repo-inspired version:
+%   - contour lines only
+%   - C3 contours
+%   - thick magenta TOF contours
+%   - C3 < 31 km^2/s^2 masking
+%   - 2005-2007 verification window
 % ==========================================================
 
 sun = astro.bodies.getBody('sun');
 
 % ----------------------------------------------------------
-% User settings
+% Verification window (same style as reference repo)
 % ----------------------------------------------------------
-depStart = datetime('2026-09-01 00:00:00', ...
-    'InputFormat', 'yyyy-MM-dd HH:mm:ss', 'TimeZone', 'UTC');
-depEnd   = datetime('2026-12-01 00:00:00', ...
-    'InputFormat', 'yyyy-MM-dd HH:mm:ss', 'TimeZone', 'UTC');
+departure_dates = datetime(2005,6,20,0,0,0):days(2):datetime(2005,11,7,0,0,0);
+arrival_dates   = datetime(2005,12,1,0,0,0):days(5):datetime(2007,2,24,0,0,0);
 
-arrStart = datetime('2027-05-01 00:00:00', ...
-    'InputFormat', 'yyyy-MM-dd HH:mm:ss', 'TimeZone', 'UTC');
-arrEnd   = datetime('2027-11-01 00:00:00', ...
-    'InputFormat', 'yyyy-MM-dd HH:mm:ss', 'TimeZone', 'UTC');
+numDepartures = numel(departure_dates);
+numArrivals   = numel(arrival_dates);
 
-% Finer resolution for smoother porkchops
-depStepDays = 2;
-arrStepDays = 2;
-
-minTOFdays = 60;
-
-depDates = depStart:days(depStepDays):depEnd;
-arrDates = arrStart:days(arrStepDays):arrEnd;
-
-nDep = numel(depDates);
-nArr = numel(arrDates);
+% Set true only if you have Parallel Computing Toolbox
+USE_PARFOR = true;
 
 % ----------------------------------------------------------
-% Preallocate result grids
-% Rows -> arrival dates
-% Cols -> departure dates
+% Cache Horizons states
 % ----------------------------------------------------------
-C3Grid      = NaN(nArr, nDep);
-vInfDepGrid = NaN(nArr, nDep);
-vInfArrGrid = NaN(nArr, nDep);
-TOFGrid     = NaN(nArr, nDep);
+cacheFile = fullfile('data', 'earth_mars_porkchop_cache_2005_2007.mat');
+useCache = false;
 
-% ----------------------------------------------------------
-% Pre-fetch ephemerides
-% ----------------------------------------------------------
-earthStates = cell(1, nDep);
-for j = 1:nDep
-    epochStr = datestr(depDates(j), 'yyyy-mm-dd HH:MM:SS');
-    earthStates{j} = astro.ephem.getHorizonsState('399', epochStr, '500@10');
+if exist(cacheFile, 'file')
+    S = load(cacheFile);
+    if isequal(S.departure_dates, departure_dates) && isequal(S.arrival_dates, arrival_dates)
+        earthStates = S.earthStates;
+        marsStates  = S.marsStates;
+        useCache = true;
+        disp('Loaded Horizons states from cache.')
+    end
 end
 
-marsStates = cell(1, nArr);
-for i = 1:nArr
-    epochStr = datestr(arrDates(i), 'yyyy-mm-dd HH:MM:SS');
-    marsStates{i} = astro.ephem.getHorizonsState('499', epochStr, '500@10');
+if ~useCache
+    disp('Fetching Horizons states...')
+    
+    earthStates = cell(1, numDepartures);
+    for i = 1:numDepartures
+        epochStr = datestr(departure_dates(i), 'yyyy-mm-dd HH:MM:SS');
+        earthStates{i} = astro.ephem.getHorizonsState('399', epochStr, '500@10');
+    end
+    
+    marsStates = cell(1, numArrivals);
+    for j = 1:numArrivals
+        epochStr = datestr(arrival_dates(j), 'yyyy-mm-dd HH:MM:SS');
+        marsStates{j} = astro.ephem.getHorizonsState('499', epochStr, '500@10');
+    end
+    
+    save(cacheFile, 'departure_dates', 'arrival_dates', 'earthStates', 'marsStates');
+    disp('Saved Horizons states to cache.')
 end
 
 % ----------------------------------------------------------
-% Main scan loop
+% Allocate porkchop arrays
+% 3rd dimension kept for compatibility with repo structure
+% even though we are using one Izzo branch here
 % ----------------------------------------------------------
-for i = 1:nArr
-    for j = 1:nDep
+C3  = NaN(numArrivals, numDepartures, 1);
+TOF = NaN(numArrivals, numDepartures, 1);
+
+v_inf_1 = NaN(numArrivals, numDepartures, 1);
+v_inf_2 = NaN(numArrivals, numDepartures, 1);
+vv1     = NaN(numArrivals, numDepartures, 1);
+vv2     = NaN(numArrivals, numDepartures, 1);
+
+% ----------------------------------------------------------
+% Main Lambert scan
+% ----------------------------------------------------------
+disp('Running Lambert scan...')
+
+nPairs = numDepartures * numArrivals;
+
+C3_vec      = NaN(nPairs,1);
+TOF_vec     = NaN(nPairs,1);
+vInf1_vec   = NaN(nPairs,1);
+vInf2_vec   = NaN(nPairs,1);
+vv1_vec     = NaN(nPairs,1);
+vv2_vec     = NaN(nPairs,1);
+
+if USE_PARFOR
+    if isempty(gcp('nocreate'))
+        parpool;
+    end
+    
+    parfor idx = 1:nPairs
+        [j, i] = ind2sub([numArrivals, numDepartures], idx);
         
-        tof = seconds(arrDates(i) - depDates(j));
-        tofDays = tof / 86400;
+        depUTC = departure_dates(i);
+        arrUTC = arrival_dates(j);
         
-        if tofDays <= minTOFdays
+        tofSec = seconds(arrUTC - depUTC);
+        
+        if tofSec <= 0
             continue
         end
         
-        r1 = earthStates{j}.r;
-        vP1 = earthStates{j}.v;
+        D_earth = earthStates{i};
+        D_mars  = marsStates{j};
         
-        r2 = marsStates{i}.r;
-        vP2 = marsStates{i}.v;
+        r1 = D_earth.r;
+        r2 = D_mars.r;
+        
+        vE = D_earth.v;
+        vM = D_mars.v;
         
         try
-            sol = astro.lambert.solveIzzo(r1, r2, tof, sun.mu, false);
-            
+            sol = astro.lambert.solveIzzo(r1, r2, tofSec, sun.mu, false);
             if ~sol.converged
                 continue
             end
             
-            vInfDepVec = astro.maneuvers.hyperbolicExcess(sol.v1, vP1);
-            vInfArrVec = astro.maneuvers.hyperbolicExcess(sol.v2, vP2);
+            vinf1 = norm(sol.v1 - vE);
+            vinf2 = norm(vM - sol.v2);
             
-            vInfDep = norm(vInfDepVec);
-            vInfArr = norm(vInfArrVec);
-            c3 = astro.maneuvers.C3(vInfDep);
-            
-            C3Grid(i,j)      = c3;
-            vInfDepGrid(i,j) = vInfDep;
-            vInfArrGrid(i,j) = vInfArr;
-            TOFGrid(i,j)     = tofDays;
-            
+            C3_vec(idx)    = vinf1^2;
+            TOF_vec(idx)   = tofSec / 86400;
+            vInf1_vec(idx) = vinf1;
+            vInf2_vec(idx) = vinf2;
+            vv1_vec(idx)   = norm(sol.v1);
+            vv2_vec(idx)   = norm(sol.v2);
         catch
+        end
+    end
+else
+    for idx = 1:nPairs
+        [j, i] = ind2sub([numArrivals, numDepartures], idx);
+        
+        depUTC = departure_dates(i);
+        arrUTC = arrival_dates(j);
+        
+        tofSec = seconds(arrUTC - depUTC);
+        
+        if tofSec <= 0
             continue
+        end
+        
+        D_earth = earthStates{i};
+        D_mars  = marsStates{j};
+        
+        r1 = D_earth.r;
+        r2 = D_mars.r;
+        
+        vE = D_earth.v;
+        vM = D_mars.v;
+        
+        try
+            sol = astro.lambert.solveIzzo(r1, r2, tofSec, sun.mu, false);
+            if ~sol.converged
+                continue
+            end
+            
+            vinf1 = norm(sol.v1 - vE);
+            vinf2 = norm(vM - sol.v2);
+            
+            C3_vec(idx)    = vinf1^2;
+            TOF_vec(idx)   = tofSec / 86400;
+            vInf1_vec(idx) = vinf1;
+            vInf2_vec(idx) = vinf2;
+            vv1_vec(idx)   = norm(sol.v1);
+            vv2_vec(idx)   = norm(sol.v2);
+        catch
+        end
+    end
+end
+
+% Reshape into repo-like arrays
+C3(:,:,1)      = reshape(C3_vec,    [numArrivals, numDepartures]);
+TOF(:,:,1)     = reshape(TOF_vec,   [numArrivals, numDepartures]);
+v_inf_1(:,:,1) = reshape(vInf1_vec, [numArrivals, numDepartures]);
+v_inf_2(:,:,1) = reshape(vInf2_vec, [numArrivals, numDepartures]);
+vv1(:,:,1)     = reshape(vv1_vec,   [numArrivals, numDepartures]);
+vv2(:,:,1)     = reshape(vv2_vec,   [numArrivals, numDepartures]);
+
+% ----------------------------------------------------------
+% Plot-prep masks
+% ----------------------------------------------------------
+C3_plot = C3;
+C3_plot(C3_plot >= 31) = NaN;
+
+TOF_plot = TOF;
+for i = 1:size(C3_plot,1)
+    for j = 1:size(C3_plot,2)
+        for k = 1:size(C3_plot,3)
+            if isnan(C3_plot(i,j,k))
+                TOF_plot(i,j,k) = NaN;
+            end
         end
     end
 end
 
 % ----------------------------------------------------------
-% Best points
+% Porkchop plot
 % ----------------------------------------------------------
-validC3 = C3Grid;
-validDep = vInfDepGrid;
-validArr = vInfArrGrid;
+figure('Color','w');
+[X, Y] = meshgrid(datenum(departure_dates), datenum(arrival_dates));
 
-[minC3, idxC3] = min(validC3(:), [], 'omitnan');
-[minDepVinf, idxDep] = min(validDep(:), [], 'omitnan');
-[minArrVinf, idxArr] = min(validArr(:), [], 'omitnan');
+levels = 10:2:30;        % C3 [km^2/s^2]
+levels_tof = 150:25:600; % TOF [days]
 
+hold on
+for k = 1:size(C3,3)
+    contour(X, Y, C3_plot(:,:,k), levels, 'LineWidth', 1.2, 'ShowText', 'on');
+    contour(X, Y, TOF_plot(:,:,k), levels_tof, 'm-', 'LineWidth', 3, 'ShowText', 'on');
+end
+hold off
+
+colormap(jet);
+cb = colorbar;
+ylabel(cb, 'C3 [km^2/s^2]');
+clim([10 30]);
+
+ax = gca;
+ax.Color = 'w';
+ax.XLim = datenum([departure_dates(1), departure_dates(end)]);
+ax.YLim = datenum([arrival_dates(1), arrival_dates(end)]);
+
+ax.XTick = linspace(ax.XLim(1), ax.XLim(2), 20);
+ax.YTick = linspace(ax.YLim(1), ax.YLim(2), 20);
+
+datetick(ax, 'x', 'yyyy-mm-dd', 'keeplimits', 'keepticks');
+datetick(ax, 'y', 'yyyy-mm-dd', 'keeplimits', 'keepticks');
+
+ax.XTickLabelRotation = 45;
+ax.FontSize = 11;
+ax.FontWeight = 'bold';
+ax.XColor = 'k';
+ax.YColor = 'k';
+ax.LineWidth = 1.2;
+
+set(ax, 'XGrid', 'on', 'YGrid', 'on', ...
+    'GridColor', [0.75 0.75 0.75], ...
+    'GridAlpha', 0.35);
+
+box on
+
+xlabel('Departure Dates', 'FontSize', 14, 'FontWeight', 'bold', 'Color', 'k');
+ylabel('Arrival Dates', 'FontSize', 14, 'FontWeight', 'bold', 'Color', 'k');
+title('Earth–Mars Pork Chop: C_3 < 30 km^2/s^2', ...
+    'FontSize', 18, 'FontWeight', 'bold', 'Color', 'k');
+
+% ----------------------------------------------------------
+% Print minimum C3 in plotted region
+% ----------------------------------------------------------
+[minC3, idxMin] = min(C3_plot(:), [], 'omitnan');
 if ~isnan(minC3)
-    [iC3, jC3] = ind2sub(size(C3Grid), idxC3);
-    fprintf('Minimum C3 found = %.6f km^2/s^2\n', minC3);
-    fprintf('  Departure: %s\n', datestr(depDates(jC3)));
-    fprintf('  Arrival  : %s\n', datestr(arrDates(iC3)));
-    fprintf('  TOF      : %.2f days\n\n', TOFGrid(iC3,jC3));
-else
-    iC3 = [];
-    jC3 = [];
+    [iMin, jMin, ~] = ind2sub(size(C3_plot), idxMin);
+    fprintf('Minimum plotted C3 found = %.6f km^2/s^2\n', minC3);
+    fprintf('  Departure: %s\n', datestr(departure_dates(jMin)));
+    fprintf('  Arrival  : %s\n', datestr(arrival_dates(iMin)));
+    fprintf('  TOF      : %.2f days\n', TOF(iMin,jMin,1));
+    fprintf('  Departure v_inf : %.6f km/s\n', v_inf_1(iMin,jMin,1));
+    fprintf('  Arrival   v_inf : %.6f km/s\n', v_inf_2(iMin,jMin,1));
 end
-
-if ~isnan(minDepVinf)
-    [iD, jD] = ind2sub(size(vInfDepGrid), idxDep);
-    fprintf('Minimum departure v_inf = %.6f km/s\n', minDepVinf);
-    fprintf('  Departure: %s\n', datestr(depDates(jD)));
-    fprintf('  Arrival  : %s\n', datestr(arrDates(iD)));
-    fprintf('  TOF      : %.2f days\n\n', TOFGrid(iD,jD));
-else
-    iD = [];
-    jD = [];
-end
-
-if ~isnan(minArrVinf)
-    [iA, jA] = ind2sub(size(vInfArrGrid), idxArr);
-    fprintf('Minimum arrival v_inf = %.6f km/s\n', minArrVinf);
-    fprintf('  Departure: %s\n', datestr(depDates(jA)));
-    fprintf('  Arrival  : %s\n', datestr(arrDates(iA)));
-    fprintf('  TOF      : %.2f days\n\n', TOFGrid(iA,jA));
-else
-    iA = [];
-    jA = [];
-end
-
-% ----------------------------------------------------------
-% Best-point structs
-% ----------------------------------------------------------
-bestC3 = [];
-bestDep = [];
-bestArr = [];
-
-if ~isempty(iC3)
-    bestC3.depDate = depDates(jC3);
-    bestC3.arrDate = arrDates(iC3);
-    bestC3.label = 'Min C3';
-end
-
-if ~isempty(iD)
-    bestDep.depDate = depDates(jD);
-    bestDep.arrDate = arrDates(iD);
-    bestDep.label = 'Min dep v_\infty';
-end
-
-if ~isempty(iA)
-    bestArr.depDate = depDates(jA);
-    bestArr.arrDate = arrDates(iA);
-    bestArr.label = 'Min arr v_\infty';
-end
-
-% ----------------------------------------------------------
-% Heatmap-style porkchops
-% ----------------------------------------------------------
-tofLevelsHeat = 180:30:360;
-
-figure
-astro.plot.porkchopPlot(depDates, arrDates, C3Grid, ...
-    'Earth-Mars Porkchop: C3', 'C3 [km^2/s^2]', ...
-    TOFGrid, tofLevelsHeat, bestC3);
-
-figure
-astro.plot.porkchopPlot(depDates, arrDates, vInfDepGrid, ...
-    'Earth-Mars Porkchop: Departure v_{\infty}', ...
-    'Departure v_{\infty} [km/s]', ...
-    TOFGrid, tofLevelsHeat, bestDep);
-
-figure
-astro.plot.porkchopPlot(depDates, arrDates, vInfArrGrid, ...
-    'Earth-Mars Porkchop: Arrival v_{\infty}', ...
-    'Arrival v_{\infty} [km/s]', ...
-    TOFGrid, tofLevelsHeat, bestArr);
-
-% ----------------------------------------------------------
-% Classical contour-style porkchops
-% Mask high values to avoid ugly contour islands
-% ----------------------------------------------------------
-C3Plot = C3Grid;
-C3Plot(C3Plot > 40) = NaN;
-
-vInfArrPlot = vInfArrGrid;
-vInfArrPlot(vInfArrPlot > 6) = NaN;
-
-vInfDepPlot = vInfDepGrid;
-vInfDepPlot(vInfDepPlot > 6) = NaN;
-
-c3Levels  = 10:2:40;
-tofLevels = 180:30:360;
-arrLevels = 2.5:0.2:5.5;
-depLevels = 3.0:0.2:6.0;
-
-figure
-astro.plot.classicalPorkchopPlot( ...
-    depDates, arrDates, C3Plot, c3Levels, ...
-    TOFGrid, tofLevels, ...
-    'Earth-Mars Classical Porkchop: C3', ...
-    'C3 [km^2/s^2]', bestC3);
-
-figure
-astro.plot.classicalPorkchopPlot( ...
-    depDates, arrDates, vInfDepPlot, depLevels, ...
-    TOFGrid, tofLevels, ...
-    'Earth-Mars Classical Porkchop: Departure v_{\infty}', ...
-    'Departure v_{\infty} [km/s]', bestDep);
-
-figure
-astro.plot.classicalPorkchopPlot( ...
-    depDates, arrDates, vInfArrPlot, arrLevels, ...
-    TOFGrid, tofLevels, ...
-    'Earth-Mars Classical Porkchop: Arrival v_{\infty}', ...
-    'Arrival v_{\infty} [km/s]', bestArr);
