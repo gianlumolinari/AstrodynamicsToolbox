@@ -1,8 +1,37 @@
+# macOS
+.DS_Store
+
+# MATLAB editor / autosave
 *.asv
 *.m~
 *.mlx.autosave
-*.slxc
-*.mex*
+
+# MATLAB generated files
 *.fig
+*.mlappinstall
+*.mex*
+slprj/
+codegen/
+resources/project/
+
+# Data / cache outputs
 *.mat
-.DS_Store
+
+# Python / notebooks if ever used in utilities
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Local environment / external tools
+external/mice/Kernels/
+
+# SPICE caches / local generated cache files
+data/*cache*.mat
+
+# Optional: ignore SPICE kernels if you do not want to upload them
+# data/spice/*.bsp
+# data/spice/*.tls
+# data/spice/*.tpc
