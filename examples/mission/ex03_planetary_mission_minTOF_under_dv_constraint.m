@@ -4,9 +4,10 @@ close all;
 
 cd('/Users/gianlucamolinari/Desktop/astroToolbox')
 startup
+astro.ephem.loadSpiceKernels(fullfile(pwd, 'data', 'spice'));
 
 % ==========================================================
-% Generic planetary mission search
+% Generic planetary mission search (SPICE version)
 % Objective:
 %   minimize time of flight subject to total delta-v limit
 %
@@ -23,8 +24,8 @@ earth = astro.bodies.getBody('earth');
 % ----------------------------------------------------------
 % USER SETTINGS
 % ----------------------------------------------------------
-targetName = 'venus';
-dvMax = 10.0;
+targetName = 'mars';     % 'venus', 'mars', 'jupiter', ...
+dvMax = 6.0;             % km/s, total mission delta-v limit
 
 % Parking orbit assumptions
 hDep = 300;              % km, Earth parking orbit altitude
@@ -36,7 +37,6 @@ rDep = earth.radius + hDep;
 departure_dates = datetime(2026,9,1,0,0,0):days(2):datetime(2026,12,1,0,0,0);
 arrival_dates   = datetime(2027,1,1,0,0,0):days(3):datetime(2028,6,1,0,0,0);
 
-% Minimum time of flight to avoid nonsense cases
 minTOFdays = 50;
 
 % Optional parallel scan
@@ -50,21 +50,21 @@ rArr = target.radius + hArr;
 
 switch lower(targetName)
     case 'mercury'
-        targetID = '199';
+        spiceTarget = 'MERCURY';
     case 'venus'
-        targetID = '299';
+        spiceTarget = 'VENUS';
     case 'earth'
-        targetID = '399';
+        spiceTarget = 'EARTH';
     case 'mars'
-        targetID = '499';
+        spiceTarget = 'MARS';
     case 'jupiter'
-        targetID = '599';
+        spiceTarget = 'JUPITER';
     case 'saturn'
-        targetID = '699';
+        spiceTarget = 'SATURN';
     case 'uranus'
-        targetID = '799';
+        spiceTarget = 'URANUS';
     case 'neptune'
-        targetID = '899';
+        spiceTarget = 'NEPTUNE';
     otherwise
         error('Unsupported targetName: %s', targetName);
 end
@@ -73,9 +73,9 @@ numDepartures = numel(departure_dates);
 numArrivals   = numel(arrival_dates);
 
 % ----------------------------------------------------------
-% Cache Horizons states
+% Cache SPICE states
 % ----------------------------------------------------------
-cacheFile = fullfile('data', ['mission_cache_earth_to_' lower(targetName) '.mat']);
+cacheFile = fullfile('data', ['mission_spice_cache_earth_to_' lower(targetName) '.mat']);
 useCache = false;
 
 if exist(cacheFile, 'file')
@@ -84,27 +84,27 @@ if exist(cacheFile, 'file')
         earthStates  = S.earthStates;
         targetStates = S.targetStates;
         useCache = true;
-        disp('Loaded Horizons states from cache.')
+        disp('Loaded SPICE states from cache.')
     end
 end
 
 if ~useCache
-    disp('Fetching Horizons states...')
+    disp('Computing SPICE states...')
     
     earthStates = cell(1, numDepartures);
     for i = 1:numDepartures
         epochStr = datestr(departure_dates(i), 'yyyy-mm-dd HH:MM:SS');
-        earthStates{i} = astro.ephem.getHorizonsState('399', epochStr, '500@10');
+        earthStates{i} = astro.ephem.getSpiceState('EARTH', epochStr, 'SUN', 'J2000', 'NONE');
     end
     
     targetStates = cell(1, numArrivals);
     for j = 1:numArrivals
         epochStr = datestr(arrival_dates(j), 'yyyy-mm-dd HH:MM:SS');
-        targetStates{j} = astro.ephem.getHorizonsState(targetID, epochStr, '500@10');
+        targetStates{j} = astro.ephem.getSpiceState(spiceTarget, epochStr, 'SUN', 'J2000', 'NONE');
     end
     
     save(cacheFile, 'departure_dates', 'arrival_dates', 'earthStates', 'targetStates');
-    disp('Saved Horizons states to cache.')
+    disp('Saved SPICE states to cache.')
 end
 
 % ----------------------------------------------------------
@@ -112,13 +112,13 @@ end
 % ----------------------------------------------------------
 nPairs = numDepartures * numArrivals;
 
-TOF_vec    = NaN(nPairs,1);
-C3_vec     = NaN(nPairs,1);
-vInfDep_vec = NaN(nPairs,1);
-vInfArr_vec = NaN(nPairs,1);
-depDV_vec  = NaN(nPairs,1);
-arrDV_vec  = NaN(nPairs,1);
-totDV_vec  = NaN(nPairs,1);
+TOF_vec      = NaN(nPairs,1);
+C3_vec       = NaN(nPairs,1);
+vInfDep_vec  = NaN(nPairs,1);
+vInfArr_vec  = NaN(nPairs,1);
+depDV_vec    = NaN(nPairs,1);
+arrDV_vec    = NaN(nPairs,1);
+totDV_vec    = NaN(nPairs,1);
 
 disp('Running constrained mission scan...')
 
@@ -143,7 +143,7 @@ if USE_PARFOR
             continue
         end
         
-        D_earth = earthStates{i};
+        D_earth  = earthStates{i};
         D_target = targetStates{j};
         
         r1 = D_earth.r;
@@ -167,13 +167,13 @@ if USE_PARFOR
             arrDV = arr.deltaV;
             totDV = depDV + arrDV;
             
-            TOF_vec(idx)     = tofDays;
-            C3_vec(idx)      = vInfDep^2;
-            vInfDep_vec(idx) = vInfDep;
-            vInfArr_vec(idx) = vInfArr;
-            depDV_vec(idx)   = depDV;
-            arrDV_vec(idx)   = arrDV;
-            totDV_vec(idx)   = totDV;
+            TOF_vec(idx)      = tofDays;
+            C3_vec(idx)       = vInfDep^2;
+            vInfDep_vec(idx)  = vInfDep;
+            vInfArr_vec(idx)  = vInfArr;
+            depDV_vec(idx)    = depDV;
+            arrDV_vec(idx)    = arrDV;
+            totDV_vec(idx)    = totDV;
         catch
         end
     end
@@ -191,7 +191,7 @@ else
             continue
         end
         
-        D_earth = earthStates{i};
+        D_earth  = earthStates{i};
         D_target = targetStates{j};
         
         r1 = D_earth.r;
@@ -215,13 +215,13 @@ else
             arrDV = arr.deltaV;
             totDV = depDV + arrDV;
             
-            TOF_vec(idx)     = tofDays;
-            C3_vec(idx)      = vInfDep^2;
-            vInfDep_vec(idx) = vInfDep;
-            vInfArr_vec(idx) = vInfArr;
-            depDV_vec(idx)   = depDV;
-            arrDV_vec(idx)   = arrDV;
-            totDV_vec(idx)   = totDV;
+            TOF_vec(idx)      = tofDays;
+            C3_vec(idx)       = vInfDep^2;
+            vInfDep_vec(idx)  = vInfDep;
+            vInfArr_vec(idx)  = vInfArr;
+            depDV_vec(idx)    = depDV;
+            arrDV_vec(idx)    = arrDV;
+            totDV_vec(idx)    = totDV;
         catch
         end
     end
@@ -253,7 +253,7 @@ TOF_feasible(~feasibleMask) = NaN;
 
 if isnan(minTOF)
     fprintf('\nNo feasible Earth-to-%s solution found for dvMax = %.3f km/s\n', ...
-        targetName, dvMax);
+        upper(targetName), dvMax);
 else
     [jOpt, iOpt] = ind2sub([numArrivals, numDepartures], idxOpt);
     
