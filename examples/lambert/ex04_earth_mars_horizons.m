@@ -100,19 +100,19 @@ fprintf('Arrival   v_inf wrt Mars      : %.6f km/s\n', vInfArr);
 % -------------------------------------------------------------------------
 % Plot transfer arc in heliocentric ecliptic plane
 % -------------------------------------------------------------------------
-figure
-hold on
+figure;
+hold on;
 
-astro.plot.plotOrbit2D(out.x(:,1:3), 'LineWidth', 1.5)
-plot(r1(1), r1(2), 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
-plot(r2(1), r2(2), 's', 'MarkerSize', 8, 'LineWidth', 1.5)
-plot(rf(1), rf(2), 'x', 'MarkerSize', 10, 'LineWidth', 1.5)
-plot(0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5)
+astro.plot.plotOrbit2D(out.x(:,1:3), 'LineWidth', 1.5);
+plot(r1(1), r1(2), 'o', 'MarkerSize', 8, 'LineWidth', 1.5);
+plot(r2(1), r2(2), 's', 'MarkerSize', 8, 'LineWidth', 1.5);
+plot(rf(1), rf(2), 'x', 'MarkerSize', 10, 'LineWidth', 1.5);
+plot(0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5);
 
-xlabel('x [km]')
-ylabel('y [km]')
-title('Earth-to-Mars Lambert transfer (JPL Horizons states)')
+xlabel('x [km]');
+ylabel('y [km]');
+title('Earth-to-Mars Lambert transfer (JPL Horizons states)');
 legend('Lambert arc', 'Earth at departure', 'Mars at arrival', ...
-       'Propagated final point', 'Sun', 'Location', 'best')
-axis equal
-grid on
+       'Propagated final point', 'Sun', 'Location', 'best');
+axis equal;
+grid on;

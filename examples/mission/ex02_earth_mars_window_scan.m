@@ -4,9 +4,10 @@ close all;
 
 cd('/Users/gianlucamolinari/Desktop/astroToolbox')
 startup
+astro.ephem.loadSpiceKernels(fullfile(pwd, 'data', 'spice'));
 
 % ==========================================================
-% Earth-Mars porkchop plot
+% Earth-Mars porkchop plot (SPICE version)
 %   - contour lines only
 %   - C3 contours
 %   - thick magenta TOF contours
@@ -29,9 +30,9 @@ numArrivals   = numel(arrival_dates);
 USE_PARFOR = true;
 
 % ----------------------------------------------------------
-% Cache Horizons states
+% Cache SPICE states
 % ----------------------------------------------------------
-cacheFile = fullfile('data', 'earth_mars_porkchop_cache_2005_2007.mat');
+cacheFile = fullfile('data', 'earth_mars_spice_cache_2005_2007.mat');
 useCache = false;
 
 if exist(cacheFile, 'file')
@@ -40,27 +41,27 @@ if exist(cacheFile, 'file')
         earthStates = S.earthStates;
         marsStates  = S.marsStates;
         useCache = true;
-        disp('Loaded Horizons states from cache.')
+        disp('Loaded SPICE states from cache.')
     end
 end
 
 if ~useCache
-    disp('Fetching Horizons states...')
+    disp('Computing SPICE states...')
     
     earthStates = cell(1, numDepartures);
     for i = 1:numDepartures
         epochStr = datestr(departure_dates(i), 'yyyy-mm-dd HH:MM:SS');
-        earthStates{i} = astro.ephem.getHorizonsState('399', epochStr, '500@10');
+        earthStates{i} = astro.ephem.getSpiceState('EARTH', epochStr, 'SUN', 'J2000', 'NONE');
     end
     
     marsStates = cell(1, numArrivals);
     for j = 1:numArrivals
         epochStr = datestr(arrival_dates(j), 'yyyy-mm-dd HH:MM:SS');
-        marsStates{j} = astro.ephem.getHorizonsState('499', epochStr, '500@10');
+        marsStates{j} = astro.ephem.getSpiceState('MARS', epochStr, 'SUN', 'J2000', 'NONE');
     end
     
     save(cacheFile, 'departure_dates', 'arrival_dates', 'earthStates', 'marsStates');
-    disp('Saved Horizons states to cache.')
+    disp('Saved SPICE states to cache.')
 end
 
 % ----------------------------------------------------------
@@ -176,7 +177,9 @@ else
     end
 end
 
+% ----------------------------------------------------------
 % Reshape into repo-like arrays
+% ----------------------------------------------------------
 C3(:,:,1)      = reshape(C3_vec,    [numArrivals, numDepartures]);
 TOF(:,:,1)     = reshape(TOF_vec,   [numArrivals, numDepartures]);
 v_inf_1(:,:,1) = reshape(vInf1_vec, [numArrivals, numDepartures]);
