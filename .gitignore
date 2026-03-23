@@ -31,7 +31,7 @@ external/mice/Kernels/
 # SPICE caches / local generated cache files
 data/*cache*.mat
 
-# Optional: ignore SPICE kernels if you do not want to upload them
-# data/spice/*.bsp
-# data/spice/*.tls
-# data/spice/*.tpc
+data/spice/*.bsp
+data/spice/*.tls
+data/spice/*.tpc
+data/*cache*.mat
