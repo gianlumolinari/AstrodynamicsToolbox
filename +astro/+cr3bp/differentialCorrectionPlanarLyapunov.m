@@ -1,27 +1,21 @@
 function out = differentialCorrectionPlanarLyapunov(x0, vy0, mu, maxIter, tol)
-%DIFFERENTIALCORRECTIONPLANARLYAPUNOV Correct planar Lyapunov seed.
+%DIFFERENTIALCORRECTIONPLANARLYAPUNOV Differential correction for a planar
+% Lyapunov orbit in the CR3BP.
 %
-% Initial condition assumed:
+% Initial state form:
 %   [x0; 0; 0; 0; vy0; 0]
 %
-% Symmetry condition at half-period crossing:
+% Corrected variable:
+%   vy0
+%
+% Symmetry condition at half period:
 %   y = 0 crossing with xd = 0
 %
-% Corrects vy0 while keeping x0 fixed.
-%
-% Output fields:
-%   .x0
-%   .vy0
-%   .state0
-%   .halfPeriod
-%   .period
-%   .converged
-%   .iterations
-%   .stateHalf
-%   .trajectory
+% The correction includes the event-time dependence:
+%   d(xd_f)/d(vy0) = Phi(4,5) - (xdd_f / yd_f)*Phi(2,5)
 
 if nargin < 4 || isempty(maxIter)
-    maxIter = 20;
+    maxIter = 30;
 end
 if nargin < 5 || isempty(tol)
     tol = 1e-10;
@@ -45,31 +39,40 @@ for k = 1:maxIter
         [0, 20], Y0, opts);
 
     if isempty(tE)
-        error('No symmetry-plane crossing detected.');
+        error('No nontrivial y=0 crossing detected.');
     end
 
-    % Use the first detected nontrivial crossing
     stateHalf = YE(1,1:6).';
     PhiHalf = reshape(YE(1,7:end), 6, 6);
 
-    xdHalf = stateHalf(4);
+    xf  = stateHalf(1);
+    yf  = stateHalf(2);
+    zf  = stateHalf(3);
+    xdf = stateHalf(4);
+    ydf = stateHalf(5);
+    zdf = stateHalf(6);
 
     traj.t = tHist;
     traj.Y = YHist;
 
-    if abs(xdHalf) < tol
+    if abs(xdf) < tol
         converged = true;
         break
     end
 
-    % Sensitivity d(xd_half)/d(vy0)
-    dxd_dvy0 = PhiHalf(4,5);
+    % Accelerations at the crossing
+    fHalf = astro.cr3bp.eomCR3BP(0, stateHalf, mu);
+    xddf = fHalf(4);
 
-    if abs(dxd_dvy0) < 1e-12
+    % Time-corrected sensitivity
+    denom = PhiHalf(4,5) - (xddf / ydf) * PhiHalf(2,5);
+
+    if abs(ydf) < 1e-12 || abs(denom) < 1e-12
         error('Differential correction became singular.');
     end
 
-    vy = vy - xdHalf / dxd_dvy0;
+    dvy = -xdf / denom;
+    vy = vy + dvy;
 end
 
 halfPeriod = tE(1);
@@ -88,9 +91,8 @@ out.trajectory = traj;
 end
 
 function [value, isterminal, direction] = localYCrossingEvent(t, Y)
-% Detect nontrivial y=0 crossing after launch from symmetry plane
 if t < 1e-6
-    value = 1;   % avoid immediate trigger at t=0
+    value = 1;
 else
     value = Y(2);
 end
