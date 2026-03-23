@@ -18,6 +18,7 @@ astro.ephem.loadSpiceKernels(fullfile(pwd, 'data', 'spice'));
 %   6) Earth parking-orbit eclipse analysis
 %   7) Ground-station visibility analysis
 %   8) J2 + drag parking-orbit propagation
+%   9) 3D central-body plotting utility
 % ==========================================================
 
 % ----------------------------------------------------------
@@ -163,7 +164,6 @@ ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
 title('Earth-Mars Heliocentric Transfer', 'FontSize', 15, 'FontWeight', 'bold');
 legend('Sun', 'Lambert transfer', 'Earth departure', 'Mars arrival', 'Location', 'best');
 
-% Summary annotation
 xAnn = min(outLam.x(:,1)) + 0.08*(max(outLam.x(:,1)) - min(outLam.x(:,1)));
 yAnn = min(outLam.x(:,2)) + 0.15*(max(outLam.x(:,2)) - min(outLam.x(:,2)));
 summaryText = sprintf(['TOF = %.1f days\n' ...
@@ -306,6 +306,30 @@ ylabel('Elevation [deg]', 'FontSize', 13, 'FontWeight', 'bold');
 title('Ground Station Elevation vs Time', 'FontSize', 15, 'FontWeight', 'bold');
 legend('Elevation', 'Mask angle', 'Visible samples', 'Location', 'best');
 
+% Optional 3D visibility view
+figure('Color','w');
+hold on
+grid on
+box on
+axis equal
+
+astro.plot.plotCentralBody(earth, earthFaceColor);
+plot3(rScVisHist(:,1), rScVisHist(:,2), rScVisHist(:,3), ...
+    '-', 'Color', orbitBlue, 'LineWidth', 1.2);
+plot3(rScVisHist(visible,1), rScVisHist(visible,2), rScVisHist(visible,3), ...
+    '.', 'Color', visibleGreen, 'MarkerSize', 8);
+plot3(rStationHist(:,1), rStationHist(:,2), rStationHist(:,3), ...
+    '--', 'Color', stationMagenta, 'LineWidth', 1.2);
+
+xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
+ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
+zlabel('z [km]', 'FontSize', 13, 'FontWeight', 'bold');
+title('Ground Station Access in Earth Parking Orbit (3D View)', ...
+    'FontSize', 15, 'FontWeight', 'bold');
+legend('Earth', 'Parking orbit', 'Visible arc', 'Station track in ECI', ...
+    'Location', 'best');
+view(35, 25)
+
 fprintf('\nGround-station access summary:\n');
 fprintf('  Elevation mask       : %.2f deg\n', minElevationDeg);
 fprintf('  Number of intervals  : %d\n', numel(intervals));
@@ -340,18 +364,20 @@ outCowell = astro.propagators.propagate( ...
 
 figure('Color','w');
 hold on
-axis equal
 grid on
 box on
+axis equal
 
-fill(earth.radius*cos(ang), earth.radius*sin(ang), earthFaceColor, ...
-    'EdgeColor', earthEdgeColor, 'LineWidth', 1.3);
-plot(outCowell.x(:,1), outCowell.x(:,2), '-', 'Color', orbitBlue, 'LineWidth', 1.6);
+astro.plot.plotCentralBody(earth, earthFaceColor);
+plot3(outCowell.x(:,1), outCowell.x(:,2), outCowell.x(:,3), ...
+    '-', 'Color', orbitBlue, 'LineWidth', 1.6);
 
 xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
+zlabel('z [km]', 'FontSize', 13, 'FontWeight', 'bold');
 title('Parking Orbit Propagation with J2 + Drag', 'FontSize', 15, 'FontWeight', 'bold');
 legend('Earth', 'Trajectory', 'Location', 'best');
+view(35, 25)
 
 % ----------------------------------------------------------
 % Final consolidated summary
