@@ -11,9 +11,6 @@ startup
 % Retrieves a CR3BP family from the JPL periodic-orbits API,
 % propagates every returned orbit with our own CR3BP equations,
 % and plots the full family using orbit index as color variable.
-%
-% Default example:
-%   Earth-Moon L1 northern halo family
 % ==========================================================
 
 fprintf('\n');
@@ -24,16 +21,13 @@ fprintf('============================================================\n');
 % ----------------------------------------------------------
 % User settings
 % ----------------------------------------------------------
-sysName = 'earth-moon';
-familyName = 'lyapunov';
+sysName = 'jupiter-europa';
+familyName = 'vertical';
 librPoint = 1;
-branchName = '';
-
-% Optional filter
-periodMaxTU = 3.0;
+branchName = '';          % leave empty if not needed
 
 % Downsample family if very large
-maxOrbitsToPlot = inf;   % e.g. 50 if needed
+maxOrbitsToPlot = inf;    % e.g. 50 if needed
 
 % Propagation options
 opts.RelTol = 1e-12;
@@ -41,18 +35,28 @@ opts.AbsTol = 1e-12;
 opts.Solver = 'ode113';
 
 % ----------------------------------------------------------
-% Query JPL family
+% Query JPL family (no period filter)
 % ----------------------------------------------------------
-data = astro.cr3bp.queryJPLPeriodicOrbits( ...
-    'sys', sysName, ...
-    'family', familyName, ...
-    'libr', librPoint, ...
-    'branch', branchName, ...
-    'periodmax', periodMaxTU, ...
-    'periodunits', 'TU');
+if strlength(string(branchName)) > 0
+    data = astro.cr3bp.queryJPLPeriodicOrbits( ...
+        'sys', sysName, ...
+        'family', familyName, ...
+        'libr', librPoint, ...
+        'branch', branchName);
+else
+    data = astro.cr3bp.queryJPLPeriodicOrbits( ...
+        'sys', sysName, ...
+        'family', familyName, ...
+        'libr', librPoint);
+end
 
 nTotal = str2double(data.count);
 fprintf('\nJPL API returned %d family members.\n', nTotal);
+
+if isnan(nTotal) || nTotal <= 0
+    error(['JPL query returned no family members. ', ...
+           'Try a different system/family/libration-point combination.']);
+end
 
 nUse = min(nTotal, maxOrbitsToPlot);
 fprintf('Using %d orbits for propagation/plotting.\n', nUse);
@@ -93,8 +97,19 @@ cmax = max(nUse, 2);
 fprintf('\nFamily summary:\n');
 fprintf('  System           : %s\n', orbits(1).systemName);
 fprintf('  Family           : %s\n', orbits(1).family);
-fprintf('  Branch           : %s\n', orbits(1).branch);
-fprintf('  Libration point  : %s\n', orbits(1).librationPoint);
+
+if isfield(orbits(1), 'branch') && ~isempty(orbits(1).branch)
+    fprintf('  Branch           : %s\n', orbits(1).branch);
+else
+    fprintf('  Branch           : (not specified)\n');
+end
+
+if isfield(orbits(1), 'librationPoint') && ~isempty(orbits(1).librationPoint)
+    fprintf('  Libration point  : %s\n', orbits(1).librationPoint);
+else
+    fprintf('  Libration point  : %d\n', librPoint);
+end
+
 fprintf('  mu               : %.15f\n', mu);
 fprintf('  Number of orbits : %d\n', nUse);
 
