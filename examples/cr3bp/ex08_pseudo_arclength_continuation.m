@@ -41,7 +41,7 @@ fprintf('  Period = %.12f TU\n', seed2.period);
 % ----------------------------------------------------------
 % Continuation settings
 % ----------------------------------------------------------
-nMembers = 500;
+nMembers = 100;
 ds = 5e-4;
 
 family = astro.cr3bp.continueFamilyPseudoArc(seed1, seed2, nMembers, ds, mu);
