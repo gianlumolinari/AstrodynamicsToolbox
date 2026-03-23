@@ -128,17 +128,32 @@ fprintf('  Mars  arrival dv      : %.6f km/s\n', dvArr);
 fprintf('  Total mission dv      : %.6f km/s\n', dvTot);
 
 % ----------------------------------------------------------
+% Plot styling helpers
+% ----------------------------------------------------------
+ang = linspace(0, 2*pi, 400);
+earthFaceColor = [0.78 0.86 0.96];
+earthEdgeColor = [0.10 0.10 0.10];
+orbitBlue = [0.00 0.20 0.95];
+visibleGreen = [0.20 0.85 0.20];
+penColor = [0.85 0.00 0.75];
+umbraRed = [0.95 0.10 0.10];
+stationMagenta = [0.85 0.00 0.85];
+
+% ----------------------------------------------------------
 % Heliocentric transfer plot
 % ----------------------------------------------------------
 figure('Color','w');
 hold on
 axis equal
 grid on
+box on
 
 plot(0, 0, 'ko', 'MarkerSize', 10, 'LineWidth', 1.5);
-plot(outLam.x(:,1), outLam.x(:,2), 'b-', 'LineWidth', 1.4);
-plot(r1(1), r1(2), 'go', 'MarkerSize', 8, 'LineWidth', 1.4);
-plot(r2(1), r2(2), 'rs', 'MarkerSize', 8, 'LineWidth', 1.4);
+plot(outLam.x(:,1), outLam.x(:,2), '-', 'Color', orbitBlue, 'LineWidth', 1.6);
+plot(r1(1), r1(2), 'o', 'MarkerSize', 8, 'LineWidth', 1.4, ...
+    'MarkerEdgeColor', visibleGreen, 'MarkerFaceColor', 'none');
+plot(r2(1), r2(2), 's', 'MarkerSize', 8, 'LineWidth', 1.4, ...
+    'MarkerEdgeColor', umbraRed, 'MarkerFaceColor', 'none');
 
 text(r1(1), r1(2), '  Earth departure', 'FontSize', 10, 'FontWeight', 'bold');
 text(r2(1), r2(2), '  Mars arrival', 'FontSize', 10, 'FontWeight', 'bold');
@@ -147,6 +162,21 @@ xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
 title('Earth-Mars Heliocentric Transfer', 'FontSize', 15, 'FontWeight', 'bold');
 legend('Sun', 'Lambert transfer', 'Earth departure', 'Mars arrival', 'Location', 'best');
+
+% Summary annotation
+xAnn = min(outLam.x(:,1)) + 0.08*(max(outLam.x(:,1)) - min(outLam.x(:,1)));
+yAnn = min(outLam.x(:,2)) + 0.15*(max(outLam.x(:,2)) - min(outLam.x(:,2)));
+summaryText = sprintf(['TOF = %.1f days\n' ...
+                       'C3 = %.3f km^2/s^2\n' ...
+                       'v_{\\infty,dep} = %.3f km/s\n' ...
+                       'v_{\\infty,arr} = %.3f km/s\n' ...
+                       '\\Delta v_{tot} = %.3f km/s'], ...
+                       tofDays, C3, vInfDep, vInfArr, dvTot);
+text(xAnn, yAnn, summaryText, ...
+    'FontSize', 10, ...
+    'BackgroundColor', 'w', ...
+    'EdgeColor', [0.3 0.3 0.3], ...
+    'Margin', 8);
 
 % ----------------------------------------------------------
 % Earth parking-orbit eclipse analysis
@@ -182,17 +212,19 @@ figure('Color','w');
 hold on
 axis equal
 grid on
+box on
 
-ang = linspace(0, 2*pi, 300);
-fill(earth.radius*cos(ang), earth.radius*sin(ang), [0.85 0.92 1.0], ...
-    'EdgeColor', 'k', 'LineWidth', 1.2);
+fill(earth.radius*cos(ang), earth.radius*sin(ang), earthFaceColor, ...
+    'EdgeColor', earthEdgeColor, 'LineWidth', 1.3);
 
-plot(xRel(isSun), yRel(isSun), 'b.', 'MarkerSize', 8);
-plot(xRel(isPen), yRel(isPen), 'm.', 'MarkerSize', 8);
-plot(xRel(isUmbra), yRel(isUmbra), 'r.', 'MarkerSize', 8);
+plot(xRel(isSun), yRel(isSun), '.', 'Color', orbitBlue, 'MarkerSize', 8);
+plot(xRel(isPen), yRel(isPen), '.', 'Color', penColor, 'MarkerSize', 8);
+plot(xRel(isUmbra), yRel(isUmbra), '.', 'Color', umbraRed, 'MarkerSize', 8);
 
-quiver(0,0,sunHat(1)*1.6*rLEO,sunHat(2)*1.6*rLEO,0,'k','LineWidth',1.5);
-quiver(0,0,shadowHat(1)*1.6*rLEO,shadowHat(2)*1.6*rLEO,0,'k--','LineWidth',1.5);
+quiver(0,0,sunHat(1)*1.6*rLEO,sunHat(2)*1.6*rLEO,0, ...
+    'Color', 'k', 'LineWidth', 1.5, 'MaxHeadSize', 0.5);
+quiver(0,0,shadowHat(1)*1.6*rLEO,shadowHat(2)*1.6*rLEO,0, ...
+    'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5, 'MaxHeadSize', 0.5);
 
 xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
@@ -246,11 +278,12 @@ figure('Color','w');
 hold on
 grid on
 axis equal
+box on
 
-plot(earth.radius*cos(ang), earth.radius*sin(ang), 'k', 'LineWidth', 1.2);
-plot(rScVisHist(:,1), rScVisHist(:,2), 'b-', 'LineWidth', 1.2);
-plot(rScVisHist(visible,1), rScVisHist(visible,2), 'g.', 'MarkerSize', 8);
-plot(rStationHist(:,1), rStationHist(:,2), 'm--', 'LineWidth', 1.2);
+plot(earth.radius*cos(ang), earth.radius*sin(ang), 'Color', earthEdgeColor, 'LineWidth', 1.2);
+plot(rScVisHist(:,1), rScVisHist(:,2), '-', 'Color', orbitBlue, 'LineWidth', 1.2);
+plot(rScVisHist(visible,1), rScVisHist(visible,2), '.', 'Color', visibleGreen, 'MarkerSize', 8);
+plot(rStationHist(:,1), rStationHist(:,2), '--', 'Color', stationMagenta, 'LineWidth', 1.2);
 plot(rStationHist(1,1), rStationHist(1,2), 'ko', 'MarkerSize', 8, 'LineWidth', 1.5);
 
 xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
@@ -262,9 +295,11 @@ legend('Earth', 'Parking orbit', 'Visible arc', 'Station track in ECI', ...
 figure('Color','w');
 hold on
 grid on
-plot(tVis/60, elevDeg, 'b-', 'LineWidth', 1.3);
-yline(minElevationDeg, 'r--', 'LineWidth', 1.2);
-plot(tVis(visible)/60, elevDeg(visible), 'g.', 'MarkerSize', 8);
+box on
+
+plot(tVis/60, elevDeg, '-', 'Color', orbitBlue, 'LineWidth', 1.3);
+yline(minElevationDeg, '--', 'Color', umbraRed, 'LineWidth', 1.2);
+plot(tVis(visible)/60, elevDeg(visible), '.', 'Color', visibleGreen, 'MarkerSize', 8);
 
 xlabel('Time [min]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('Elevation [deg]', 'FontSize', 13, 'FontWeight', 'bold');
@@ -288,11 +323,11 @@ x0Park = [r0Park; v0Park];
 
 pert.useJ2 = true;
 pert.useDrag = true;
-pert.Cd = 2.2;
-pert.AoverM = 0.01;              % m^2/kg
-pert.rho0 = 3.614e-13;           % kg/m^3
-pert.H = 88.667;                 % km
-pert.omegaBody = 7.2921159e-5;   % rad/s
+pert.Cd = 2.2;              % -
+pert.AoverM = 0.01;         % m^2/kg
+pert.rho0 = 3.614e-13;      % kg/m^3
+pert.H = 88.667;            % km
+pert.omegaBody = 7.2921159e-5;
 
 tspanCowell = [0, 5*Tpark];
 optsCowell.RelTol = 1e-11;
@@ -307,9 +342,11 @@ figure('Color','w');
 hold on
 axis equal
 grid on
+box on
 
-plot(earth.radius*cos(ang), earth.radius*sin(ang), 'k', 'LineWidth', 1.2);
-plot(outCowell.x(:,1), outCowell.x(:,2), 'b-', 'LineWidth', 1.2);
+fill(earth.radius*cos(ang), earth.radius*sin(ang), earthFaceColor, ...
+    'EdgeColor', earthEdgeColor, 'LineWidth', 1.3);
+plot(outCowell.x(:,1), outCowell.x(:,2), '-', 'Color', orbitBlue, 'LineWidth', 1.6);
 
 xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
