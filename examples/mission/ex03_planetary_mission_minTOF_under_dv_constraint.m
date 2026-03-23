@@ -11,7 +11,7 @@ astro.ephem.loadSpiceKernels(fullfile(pwd, 'data', 'spice'));
 % Objective:
 %   minimize time of flight subject to total delta-v limit
 %
-% Primary body sequence:
+% Sequence:
 %   Earth departure -> target planet arrival
 %
 % Solver:
@@ -120,6 +120,11 @@ depDV_vec    = NaN(nPairs,1);
 arrDV_vec    = NaN(nPairs,1);
 totDV_vec    = NaN(nPairs,1);
 
+r1_store     = cell(nPairs,1);
+r2_store     = cell(nPairs,1);
+v1_store     = cell(nPairs,1);
+v2_store     = cell(nPairs,1);
+
 disp('Running constrained mission scan...')
 
 % ----------------------------------------------------------
@@ -174,6 +179,11 @@ if USE_PARFOR
             depDV_vec(idx)    = depDV;
             arrDV_vec(idx)    = arrDV;
             totDV_vec(idx)    = totDV;
+            
+            r1_store{idx}     = r1;
+            r2_store{idx}     = r2;
+            v1_store{idx}     = sol.v1;
+            v2_store{idx}     = sol.v2;
         catch
         end
     end
@@ -222,6 +232,11 @@ else
             depDV_vec(idx)    = depDV;
             arrDV_vec(idx)    = arrDV;
             totDV_vec(idx)    = totDV;
+            
+            r1_store{idx}     = r1;
+            r2_store{idx}     = r2;
+            v1_store{idx}     = sol.v1;
+            v2_store{idx}     = sol.v2;
         catch
         end
     end
@@ -269,4 +284,38 @@ else
     fprintf('Departure delta-v          : %.6f km/s\n', depDV(jOpt, iOpt));
     fprintf('Arrival delta-v            : %.6f km/s\n', arrDV(jOpt, iOpt));
     fprintf('Total delta-v              : %.6f km/s\n', totDV(jOpt, iOpt));
+    
+    % ------------------------------------------------------
+    % Plot best-transfer heliocentric geometry
+    % ------------------------------------------------------
+    r1_best = r1_store{idxOpt};
+    r2_best = r2_store{idxOpt};
+    v1_best = v1_store{idxOpt};
+    
+    x0 = [r1_best; v1_best];
+    tspan = [0, TOF(jOpt, iOpt)*86400];
+    
+    opts.RelTol = 1e-12;
+    opts.AbsTol = 1e-12;
+    opts.Solver = 'ode113';
+    
+    out = astro.propagators.propagate( ...
+        @(t,x) astro.propagators.eomTwoBody(t, x, sun.mu), ...
+        tspan, x0, opts);
+    
+    figure('Color','w');
+    hold on
+    astro.plot.plotOrbit2D(out.x(:,1:3), 'LineWidth', 1.5);
+    plot(r1_best(1), r1_best(2), 'o', 'MarkerSize', 8, 'LineWidth', 1.5);
+    plot(r2_best(1), r2_best(2), 's', 'MarkerSize', 8, 'LineWidth', 1.5);
+    plot(0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5);
+    
+    xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
+    ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
+    title(sprintf('Best Earth-to-%s Transfer Geometry', upper(targetName)), ...
+        'FontSize', 16, 'FontWeight', 'bold');
+    legend('Lambert arc', 'Departure state', 'Arrival state', 'Sun', ...
+        'Location', 'best');
+    axis equal
+    grid on
 end
