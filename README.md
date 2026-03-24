@@ -1,108 +1,70 @@
-# AstrodynamicsToolbox
+# Astrodynamics Toolbox (MATLAB)
 
-A modular MATLAB toolbox for astrodynamics, mission design, and dynamical systems analysis.
+A modular MATLAB toolbox for **classical astrodynamics**, **trajectory design**, and **dynamical systems analysis in the Circular Restricted Three-Body Problem (CR3BP)**.
 
-The project is being developed as a personal and research-oriented toolbox with two main pillars:
+The project is under active development and is intended as a research-oriented environment for:
 
-1. **Classical astrodynamics**
-   - two-body propagation
-   - Lambert transfer design
-   - patched-conics analysis
-   - ephemeris-driven interplanetary trajectories
-   - gravity-assist and multiple-gravity-assist workflows
-   - perturbation modeling
-   - eclipse and visibility analysis
-
-2. **CR3BP and dynamical systems**
-   - libration-point analysis
-   - retrieval of periodic-orbit seeds from the JPL API
-   - periodic-orbit propagation and visualization
-   - differential correction and shooting methods
-   - family continuation
-   - monodromy and stability analysis
-   - stable/unstable manifold generation
-   - Poincaré sections
-
-The long-term goal is to build a single MATLAB environment that supports both traditional mission design and modern multi-body trajectory design.
+- orbit propagation and perturbation modeling
+- Lambert and patched-conics trajectory design
+- SPICE-based ephemerides and mission reconstruction
+- multiple-gravity-assist analysis
+- small-body target screening
+- periodic orbit computation in the CR3BP
+- family continuation, stability analysis, invariant manifolds, and Poincaré sections
 
 ---
 
-## Current capabilities
+## Current Scope
 
-### Classical astrodynamics
+The toolbox currently develops along two main directions:
 
-- Two-body propagation in Cartesian form
-- Lambert solver workflows
-- Earth-Mars and interplanetary transfer examples
-- Patched-conics mission metrics
-  - \(v_\infty\)
-  - launch \(C_3\)
-  - departure and arrival \(\Delta v\)
-- Gravity-assist / MGA prototype workflows
-- SPICE-based planetary ephemerides
-- JUICE and Galileo-style reference reconstruction examples
-- J2 and drag perturbation propagation
-- Third-body perturbation examples
-- Eclipse analysis
-  - cylindrical shadow model
-  - conical sunlight / penumbra / umbra classification
-- Ground-station visibility and access analysis
-- Small-body screening utilities for NEO target selection
+### 1. Classical astrodynamics
+Classical trajectory-analysis capabilities include:
 
-### CR3BP and dynamical systems
+- Cartesian / orbital-element conversions
+- two-body propagation
+- Lambert solvers
+- Hohmann and patched-conics transfers
+- J2, drag, and third-body perturbations
+- topocentric visibility and ground-station access
+- eclipse and conical shadow checks
+- multiple-gravity-assist workflows
+- SPICE-based mission reconstruction and validation
+- small-body / NEO screening examples
 
-- CR3BP equations of motion
-- Jacobi constant evaluation
+### 2. CR3BP and dynamical systems
+CR3BP capabilities include:
+
+- equations of motion and zero-velocity curves
 - Lagrange point computation
-- Zero-velocity / energetics utilities
-- JPL periodic-orbit API query support
-- Parsing of periodic-orbit family data from JPL
-- Family propagation and color-mapped family visualization
-- Planar Lyapunov correction experiments
-- Single- and multiple-shooting infrastructure
-- Natural continuation prototype
-- Pseudo-arclength continuation for planar Lyapunov families
-- Monodromy matrix computation
-- Stability metrics
-  - unstable multiplier
-  - stable reciprocal multiplier
-  - spectral radius
-  - stability index
-- Stable and unstable manifold seed generation
-- Manifold propagation
-- Poincaré section generation for manifold crossings
+- JPL periodic-orbit seed retrieval
+- planar Lyapunov and halo differential correction
+- single-shooting and multiple-shooting correction
+- natural and pseudo-arclength continuation
+- family generation and visualization
+- monodromy matrix and eigenspectrum analysis
+- stability diagnostics
+- stable and unstable manifold generation
+- Poincaré sections
+- validation against literature benchmarks such as Howell (1984)
 
 ---
 
-## Repository structure
+## Repository Structure
 
-A simplified view of the current layout:
-
-```text
 AstrodynamicsToolbox/
-│
-├── +astro/
-│   ├── +bodies/
-│   ├── +coords/
-│   ├── +cr3bp/
-│   ├── +ephem/
-│   ├── +geometry/
-│   ├── +lambert/
-│   ├── +maneuvers/
-│   ├── +mga/
-│   ├── +propagators/
-│   ├── +smallbody/
-│   └── +visibility/
-│
-├── data/
-│   └── spice/
-│
+├── +astro/                 % Main MATLAB package
+├── data/                   % SPICE kernels, constants, auxiliary data
 ├── examples/
 │   ├── classical/
-│   ├── cr3bp/
-│   ├── mga/
-│   ├── smallbody/
-│   └── visibility/
-│
-├── startup.m
+│   │   ├── testing/
+│   │   ├── validation/
+│   │   └── demos/
+│   └── cr3bp/
+│       ├── testing/
+│       ├── validation/
+│       └── demos/
+├── external/               % External dependencies (e.g. MICE/SPICE)
+├── tests/                  % Automated / regression tests (future expansion)
+├── startup.m               % Adds toolbox folders to MATLAB path
 └── README.md
