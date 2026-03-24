@@ -52,6 +52,7 @@ CR3BP capabilities include:
 
 ## Repository Structure
 
+```text
 AstrodynamicsToolbox/
 ├── +astro/                 % Main MATLAB package
 ├── data/                   % SPICE kernels, constants, auxiliary data
