@@ -290,17 +290,17 @@ Suggested Starting Points
 If you are new to the toolbox, these are good entry points.
 
 Classical
-	•	examples/classical/testing/test_two_body_propagation.m
-	•	examples/classical/testing/test_basic_lambert.m
-	•	examples/classical/validation/validate_juice_spice_truth_comparison.m
-	•	examples/classical/demos/demo_end_to_end_earth_mars_mission_design.m
+	- examples/classical/testing/test_two_body_propagation.m
+	- examples/classical/testing/test_basic_lambert.m
+	- examples/classical/validation/validate_juice_spice_truth_comparison.m
+	- examples/classical/demos/demo_end_to_end_earth_mars_mission_design.m
 
 CR3BP
-	•	examples/cr3bp/testing/test_cr3bp_lagrange_and_zvc.m
-	•	examples/cr3bp/testing/test_planar_lyapunov_differential_correction.m
-	•	examples/cr3bp/validation/validate_howell1984_halo_family.m
-	•	examples/cr3bp/demos/demo_halo_family_continuation.m
-	•	examples/cr3bp/demos/demo_poincare_section_manifolds.m
+	- examples/cr3bp/testing/test_cr3bp_lagrange_and_zvc.m
+	- examples/cr3bp/testing/test_planar_lyapunov_differential_correction.m
+	- examples/cr3bp/validation/validate_howell1984_halo_family.m
+	- examples/cr3bp/demos/demo_halo_family_continuation.m
+	- examples/cr3bp/demos/demo_poincare_section_manifolds.m
 
 ⸻
 
@@ -309,9 +309,9 @@ Validation Strategy
 A core design goal of the toolbox is benchmark consistency.
 
 Validation workflows currently include comparison against:
-	•	SPICE truth trajectories for mission reconstruction examples
-	•	JPL periodic-orbit seeds for CR3BP family studies
-	•	literature benchmarks such as Howell (1984) for halo orbits
+	- SPICE truth trajectories for mission reconstruction examples
+	- JPL periodic-orbit seeds for CR3BP family studies
+	- literature benchmarks such as Howell (1984) for halo orbits
 
 This makes the toolbox useful not only for development and exploration, but also for reproducible astrodynamics studies.
 
@@ -322,35 +322,35 @@ Development Status
 This is an ongoing project.
 
 The current focus is on building a robust and extensible foundation for:
-	•	classical mission design workflows
-	•	CR3BP periodic orbit computation and continuation
-	•	invariant manifold analysis
-	•	benchmark validation against literature and ephemerides
+	- classical mission design workflows
+	- CR3BP periodic orbit computation and continuation
+	- invariant manifold analysis
+	- benchmark validation against literature and ephemerides
 
 Planned future directions include:
-	•	more automated regression tests
-	•	additional optimization workflows
-	•	improved manifold-surface visualization
-	•	expanded small-body targeting tools
-	•	higher-fidelity models beyond the CRTBP where appropriate
+	- more automated regression tests
+	- additional optimization workflows
+	- improved manifold-surface visualization
+	- expanded small-body targeting tools
+	- higher-fidelity models beyond the CR3BP
 
 ⸻
 
 Design Principles
 
 The toolbox is being developed with the following priorities:
-	•	modularity — reusable functions under the +astro package
-	•	transparency — examples written as readable workflows rather than black boxes
-	•	validation — benchmark scripts included alongside development and demo cases
-	•	research utility — suitable for both learning and more advanced exploratory work
+	- modularity — reusable functions under the +astro package
+	- transparency — examples written as readable workflows rather than black boxes
+	- validation — benchmark scripts included alongside development and demo cases
+	- research utility — suitable for both learning and more advanced exploratory work
 
 ⸻
 
 Notes
-	•	Most examples are written as transparent scripts to make the workflow easy to inspect and adapt.
-	•	Validation scripts are especially useful as reference cases when extending the toolbox.
-	•	The CR3BP branch is being developed with a strong emphasis on literature consistency and benchmark reproducibility.
-	•	Some visualizations, especially invariant-manifold plots, may continue to evolve as benchmark cases and plotting conventions are refined.
+	- Most examples are written as transparent scripts to make the workflow easy to inspect and adapt.
+	- Validation scripts are especially useful as reference cases when extending the toolbox.
+	- The CR3BP branch is being developed with a strong emphasis on literature consistency and benchmark reproducibility.
+	- Some visualizations, especially invariant-manifold plots, may continue to evolve as benchmark cases and plotting conventions are refined.
 
 ⸻
 
