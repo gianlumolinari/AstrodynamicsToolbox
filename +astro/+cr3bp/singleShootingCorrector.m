@@ -78,7 +78,7 @@ for k = 1:maxIter
     D = PhiFinal(:, freeIdx) - E;
 
     if isTfFree
-        fFinal = astro.cr3bp.cr3bpRHS(0, xf, mu);
+        fFinal = astro.cr3bp.eomCR3BP(0, xf, mu);
         D = [D, fFinal];
     end
 

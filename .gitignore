@@ -16,6 +16,7 @@ resources/project/
 
 # Data / cache outputs
 *.mat
+data/*cache*.mat
 
 # Python / notebooks if ever used in utilities
 __pycache__/
@@ -28,10 +29,10 @@ __pycache__/
 # Local environment / external tools
 external/mice/Kernels/
 
-# SPICE caches / local generated cache files
-data/*cache*.mat
+# Ignore all SPICE kernels and mission files
+data/spice/**
 
-data/spice/*.bsp
-data/spice/*.tls
-data/spice/*.tpc
-data/*cache*.mat
+# Keep folder structure if desired
+!data/spice/
+!data/spice/**/
+!data/spice/**/.gitkeep
