@@ -32,9 +32,9 @@ fprintf('  Period = %.12f TU\n', seed.period);
 % ----------------------------------------------------------
 % Continuation settings
 % ----------------------------------------------------------
-nMembers = 30;
-stepSize = -1e-3;
-nNodes   = 10;
+nMembers = 20;
+stepSize = -2e-4;
+nNodes   = 12;
 
 % ----------------------------------------------------------
 % Run continuation

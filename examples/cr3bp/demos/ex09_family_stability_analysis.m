@@ -48,10 +48,20 @@ Cvals = NaN(1,nFam);
 Tvals = NaN(1,nFam);
 x0vals = NaN(1,nFam);
 vy0vals = NaN(1,nFam);
+
 rhoVals = NaN(1,nFam);
+logRhoVals = NaN(1,nFam);
 nuVals = NaN(1,nFam);
-domReal = NaN(1,nFam);
-domImag = NaN(1,nFam);
+
+lambdaUReal = NaN(1,nFam);
+lambdaUImag = NaN(1,nFam);
+lambdaSReal = NaN(1,nFam);
+lambdaSImag = NaN(1,nFam);
+
+center1Real = NaN(1,nFam);
+center1Imag = NaN(1,nFam);
+center2Real = NaN(1,nFam);
+center2Imag = NaN(1,nFam);
 
 for k = 1:nFam
     x0 = family(k).state0(:);
@@ -64,10 +74,24 @@ for k = 1:nFam
     Tvals(k) = T;
     x0vals(k) = x0(1);
     vy0vals(k) = x0(5);
+
     rhoVals(k) = stab.spectralRadius;
+    logRhoVals(k) = log10(stab.spectralRadius);
     nuVals(k) = real(stab.nu);
-    domReal(k) = real(stab.lambdaDominant);
-    domImag(k) = imag(stab.lambdaDominant);
+
+    lambdaUReal(k) = real(stab.unstableMultiplier);
+    lambdaUImag(k) = imag(stab.unstableMultiplier);
+    lambdaSReal(k) = real(stab.stableMultiplier);
+    lambdaSImag(k) = imag(stab.stableMultiplier);
+
+    if numel(stab.centerPair) >= 1
+        center1Real(k) = real(stab.centerPair(1));
+        center1Imag(k) = imag(stab.centerPair(1));
+    end
+    if numel(stab.centerPair) >= 2
+        center2Real(k) = real(stab.centerPair(2));
+        center2Imag(k) = imag(stab.centerPair(2));
+    end
 end
 
 fprintf('\nFamily summary:\n');
@@ -75,6 +99,7 @@ fprintf('  Members            : %d\n', nFam);
 fprintf('  C range            : [%.12f, %.12f]\n', min(Cvals), max(Cvals));
 fprintf('  Period range [TU]  : [%.12f, %.12f]\n', min(Tvals), max(Tvals));
 fprintf('  Spectral radius    : [%.12f, %.12f]\n', min(rhoVals), max(rhoVals));
+fprintf('  Unstable mult.     : [%.12f, %.12f]\n', min(lambdaUReal), max(lambdaUReal));
 
 % ----------------------------------------------------------
 % Plot family in x-y plane
@@ -140,24 +165,41 @@ title('Stability Index Along Family', ...
     'FontSize', 15, 'FontWeight', 'bold');
 
 % ----------------------------------------------------------
-% Spectral radius vs family member
+% log10 spectral radius vs family member
 % ----------------------------------------------------------
 figure('Color','w');
 hold on
 grid on
 box on
 
-plot(1:nFam, rhoVals, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
-yline(1.0, '--', 'LineWidth', 1.2);
+plot(1:nFam, logRhoVals, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
+yline(0.0, '--', 'LineWidth', 1.2);
 
 xlabel('Family member index', 'FontSize', 13, 'FontWeight', 'bold');
-ylabel('Spectral radius \rho(M)', 'FontSize', 13, 'FontWeight', 'bold');
-title('Monodromy Spectral Radius Along Family', ...
+ylabel('log_{10}(\rho(M))', 'FontSize', 13, 'FontWeight', 'bold');
+title('Log Spectral Radius Along Family', ...
     'FontSize', 15, 'FontWeight', 'bold');
-legend('Spectral radius', 'Unit circle threshold', 'Location', 'best');
+legend('log_{10}(\rho)', 'Neutral threshold', 'Location', 'best');
 
 % ----------------------------------------------------------
-% Dominant eigenvalue in complex plane
+% Unstable / stable multipliers vs family member
+% ----------------------------------------------------------
+figure('Color','w');
+hold on
+grid on
+box on
+
+plot(1:nFam, lambdaUReal, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
+plot(1:nFam, lambdaSReal, 's-', 'LineWidth', 1.2, 'MarkerSize', 5);
+
+xlabel('Family member index', 'FontSize', 13, 'FontWeight', 'bold');
+ylabel('Real multiplier value', 'FontSize', 13, 'FontWeight', 'bold');
+title('Unstable and Stable Reciprocal Multipliers Along Family', ...
+    'FontSize', 15, 'FontWeight', 'bold');
+legend('\lambda_u', '\lambda_s', 'Location', 'best');
+
+% ----------------------------------------------------------
+% Center pair in complex plane
 % ----------------------------------------------------------
 figure('Color','w');
 hold on
@@ -167,12 +209,13 @@ axis equal
 
 th = linspace(0, 2*pi, 400);
 plot(cos(th), sin(th), '--', 'LineWidth', 1.0);
-plot(domReal, domImag, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
+plot(center1Real, center1Imag, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
+plot(center2Real, center2Imag, 's-', 'LineWidth', 1.0, 'MarkerSize', 5);
 
-xlabel('Real(\lambda_{dom})', 'FontSize', 13, 'FontWeight', 'bold');
-ylabel('Imag(\lambda_{dom})', 'FontSize', 13, 'FontWeight', 'bold');
-title('Dominant Monodromy Eigenvalue Along Family', ...
+xlabel('Real(\lambda_c)', 'FontSize', 13, 'FontWeight', 'bold');
+ylabel('Imag(\lambda_c)', 'FontSize', 13, 'FontWeight', 'bold');
+title('Center-Pair Eigenvalues Along Family', ...
     'FontSize', 15, 'FontWeight', 'bold');
-legend('Unit circle', 'Dominant eigenvalue', 'Location', 'best');
+legend('Unit circle', 'Center pair 1', 'Center pair 2', 'Location', 'best');
 
 fprintf('\nDone.\n');
