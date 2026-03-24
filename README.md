@@ -69,8 +69,7 @@ AstrodynamicsToolbox/
 ├── tests/                  % Automated / regression tests (future expansion)
 ├── startup.m               % Adds toolbox folders to MATLAB path
 └── README.md
-
-
+```
 ## Example Philosophy
 
 Examples are grouped by both **domain** and **purpose**.
@@ -276,20 +275,14 @@ Current CR3BP demo examples include:
 ```bash
 git clone https://github.com/gianlumolinari/AstrodynamicsToolbox.git
 cd AstrodynamicsToolbox
-
-Getting Started
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/gianlumolinari/AstrodynamicsToolbox.git
-cd AstrodynamicsToolbox
+```
 
 2. Open MATLAB in the repository root
 Then run:
 
+```matlab
 startup
-
+```
 This adds the toolbox and example folders to the MATLAB path.
 
 Suggested Starting Points
