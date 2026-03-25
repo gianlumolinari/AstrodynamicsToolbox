@@ -83,29 +83,34 @@ view(3)
 ```matlab
 startup
 
-mu = 0.012150585609624;   % Earth-Moon mass ratio
-L = astro.cr3bp.lagrangePoints(mu);
+mu = 0.012150585609624;  % Earth-Moon mass ratio
 
-x0 = [L.L1(1)-0.01; 0; 0; 0; 0.1; 0];
-C = astro.cr3bp.jacobiConstant(x0, mu);
+
+x0 = [-0.84094370;
+       0.00000000;
+       0.00000000;
+       0.00000000;
+       0.25043310;
+       0.00000000];
+
+T = 6.27459754;  
 
 out = astro.propagators.propagate( ...
     @(t,x) astro.cr3bp.eomCR3BP(t, x, mu), ...
-    [0 5], x0);
+    [0 T], x0);
 
 figure
-plot3(out.x(:,1), out.x(:,2), out.x(:,3), 'LineWidth', 1.8)
+plot3(out.x(:,1), out.x(:,2), out.x(:,3), 'LineWidth', 1.5)
 hold on
-plot3(x0(1), x0(2), x0(3), 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
-plot3(-mu, 0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5)
-plot3(1-mu, 0, 0, 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
+plot3(-mu, 0, 0, 'bo', 'MarkerSize', 8, 'MarkerFaceColor', 'b')
+plot3(1-mu, 0, 0, 'ko', 'MarkerSize', 6, 'MarkerFaceColor', 'k')
 grid on
 axis equal
 xlabel('x [-]')
 ylabel('y [-]')
 zlabel('z [-]')
-title('CR3BP Trajectory Propagation')
-legend('Trajectory', 'Initial state', 'Primary 1', 'Primary 2', 'Location', 'best')
+title('Earth-Moon 3:1 Resonant Periodic Orbit')
+legend('Trajectory', 'Earth', 'Moon', 'Location', 'best')
 view(3)
 ```
 
