@@ -42,7 +42,7 @@ fprintf('  Period = %.12f TU\n', seed2.period);
 % Continuation settings
 % ----------------------------------------------------------
 nMembers = 100;
-ds = 5e-4;
+ds = 2e-2;
 
 family = astro.cr3bp.continueFamilyPseudoArc(seed1, seed2, nMembers, ds, mu);
 
@@ -60,7 +60,7 @@ fprintf('  C range        : [%.12f, %.12f]\n', min(Cvals), max(Cvals));
 L = astro.cr3bp.lagrangePoints(mu);
 
 % ----------------------------------------------------------
-% x-y family plot
+% x-y family plot (Color Coded by Jacobi Constant)
 % ----------------------------------------------------------
 figure('Color','w');
 hold on
@@ -68,23 +68,36 @@ axis equal
 grid on
 box on
 
-cmap = parula(max(nPlot,16));
+nColors = 256; 
+cmap = parula(nColors);
+Cmin = min(Cvals);
+Cmax = max(Cvals);
 
 for k = 1:nPlot
     traj = family(k).traj;
-    plot(traj(:,1), traj(:,2), 'Color', cmap(k,:), 'LineWidth', 1.2);
+    
+    % Normalize the current Jacobi constant to [0, 1]
+    if Cmax > Cmin
+        normC = (Cvals(k) - Cmin) / (Cmax - Cmin);
+    else
+        normC = 0.5; % Fallback if all C values are somehow identical
+    end
+    
+    cIdx = max(1, min(nColors, round(normC * (nColors - 1)) + 1));
+    
+    plot(traj(:,1), traj(:,2), 'Color', cmap(cIdx,:), 'LineWidth', 1.2);
 end
 
+% Plot primaries and Lagrange point
 plot(-mu, 0, 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
 plot(1-mu, 0, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
 plot(L.L1(1), L.L1(2), 'rs', 'MarkerSize', 7, 'LineWidth', 1.4);
-
 text(L.L1(1), L.L1(2), '  L1', 'FontSize', 10, 'FontWeight', 'bold');
 
 colormap(cmap);
 cb = colorbar;
-ylabel(cb, 'Family index', 'FontSize', 12, 'FontWeight', 'bold');
-clim([1 max(nPlot,2)]);
+ylabel(cb, 'Jacobi Constant, C [-]', 'FontSize', 12, 'FontWeight', 'bold');
+clim([Cmin Cmax]); % Update color limits to match the actual Jacobi values
 
 xlabel('x [-]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [-]', 'FontSize', 13, 'FontWeight', 'bold');

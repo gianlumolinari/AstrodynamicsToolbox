@@ -21,9 +21,9 @@ fprintf('============================================================\n');
 % ----------------------------------------------------------
 % User settings
 % ----------------------------------------------------------
-sysName = 'jupiter-europa';
-familyName = 'vertical';
-librPoint = 1;
+sysName = 'sun-earth';
+familyName = 'dro';
+librPoint = '';
 branchName = '';          % leave empty if not needed
 
 % Downsample family if very large
