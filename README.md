@@ -1,361 +1,206 @@
 # Astrodynamics Toolbox (MATLAB)
+![MATLAB](https://img.shields.io/badge/MATLAB-R2021a%2B-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)
 
-A modular MATLAB toolbox for **classical astrodynamics**, **trajectory design**, and **dynamical systems analysis in the Circular Restricted Three-Body Problem (CR3BP)**.
+A modular MATLAB toolbox for **classical astrodynamics**, **trajectory design**, and **CR3BP dynamical systems analysis**. 
 
-The project is under active development and is intended as a research-oriented environment for:
-
-- orbit propagation and perturbation modeling
-- Lambert and patched-conics trajectory design
-- SPICE-based ephemerides and mission reconstruction
-- multiple-gravity-assist analysis
-- small-body target screening
-- periodic orbit computation in the CR3BP
-- family continuation, stability analysis, invariant manifolds, and Poincaré sections
-
+Designed to be highly transparent and strictly validated, this toolbox provides a robust foundation for everything from two-body propagation and Lambert/patched-conics design to advanced periodic orbit computation, continuation methods, and SPICE-based ephemeris validation. It is built for both educational learning and advanced research.
 ---
 
-## Current Scope
+## 🚀 Getting Started
 
-The toolbox currently develops along two main directions:
-
-### 1. Classical astrodynamics
-Classical trajectory-analysis capabilities include:
-
-- Cartesian / orbital-element conversions
-- two-body propagation
-- Lambert solvers
-- Hohmann and patched-conics transfers
-- J2, drag, and third-body perturbations
-- topocentric visibility and ground-station access
-- eclipse and conical shadow checks
-- multiple-gravity-assist workflows
-- SPICE-based mission reconstruction and validation
-- small-body / NEO screening examples
-
-### 2. CR3BP and dynamical systems
-CR3BP capabilities include:
-
-- equations of motion and zero-velocity curves
-- Lagrange point computation
-- JPL periodic-orbit seed retrieval
-- planar Lyapunov and halo differential correction
-- single-shooting and multiple-shooting correction
-- natural and pseudo-arclength continuation
-- family generation and visualization
-- monodromy matrix and eigenspectrum analysis
-- stability diagnostics
-- stable and unstable manifold generation
-- Poincaré sections
-- validation against literature benchmarks such as Howell (1984)
-
----
-
-## Repository Structure
-
-```text
-AstrodynamicsToolbox/
-├── +astro/                 % Main MATLAB package
-├── data/                   % SPICE kernels, constants, auxiliary data
-├── examples/
-│   ├── classical/
-│   │   ├── testing/
-│   │   ├── validation/
-│   │   └── demos/
-│   └── cr3bp/
-│       ├── testing/
-│       ├── validation/
-│       └── demos/
-├── external/               % External dependencies (e.g. MICE/SPICE)
-├── tests/                  % Automated / regression tests (future expansion)
-├── startup.m               % Adds toolbox folders to MATLAB path
-└── README.md
-```
-## Example Philosophy
-
-Examples are grouped by both **domain** and **purpose**.
-
-### `testing`
-
-These are development-oriented scripts used to:
-
-- verify algorithms
-- debug new implementations
-- inspect intermediate numerical behavior
-- test convergence of correctors and propagators
-
-Typical examples include:
-
-- Lambert solver checks
-- perturbation-model tests
-- CR3BP differential-correction tests
-- JPL seed-retrieval checks
-
-### `validation`
-
-These scripts compare toolbox results against:
-
-- published literature
-- tabulated benchmark solutions
-- SPICE truth trajectories
-- reference mission data
-
-Typical examples include:
-
-- Galileo / JUICE trajectory validation
-- JUICE SPICE truth comparison
-- Howell (1984) halo-family validation
-- CR3BP eigenspectrum benchmark checks
-
-### `demos`
-
-These are more polished examples intended to showcase toolbox capabilities end-to-end.
-
-Typical examples include:
-
-- Earth–Mars mission design workflow
-- small-body target-screening demo
-- MGA showcase examples
-- halo-family continuation
-- manifold and Poincaré-section visualizations
-
----
-
-## Current Example Layout
-
-### Classical examples
-
-#### Testing
-
-Located in `examples/classical/testing`
-
-These cover low-level and intermediate workflows such as:
-
-- orbital element conversion
-- two-body propagation
-- Hohmann transfer checks
-- Lambert validation
-- eclipse and visibility utilities
-- perturbation modeling
-- MGA feasibility and optimization experiments
-
-Current classical testing examples include:
-
-- `test_coe_rv_conversion.m`
-- `test_two_body_propagation.m`
-- `test_hohmann_transfer.m`
-- `test_basic_lambert.m`
-- `test_lambert_propagation_check.m`
-- `test_compare_universal_vs_izzo.m`
-- `test_earth_mars_horizons.m`
-- `test_earth_eclipse_check.m`
-- `test_ground_station_access.m`
-- `test_conical_eclipse_check.m`
-- `test_j2_drag_propagation.m`
-- `test_topocentric_visibility.m`
-- `test_third_body_perturbation.m`
-- `test_mga_feasibility_check.m`
-- `test_plot_single_flyby.m`
-- `test_optimize_mga_dates.m`
-- `test_optimize_mga_dates_constrained.m`
-- `test_scan_mga_sequence.m`
-- `test_optimize_mga_departure_and_tofs.m`
-
-#### Validation
-
-Located in `examples/classical/validation`
-
-These currently include benchmark-style scripts such as:
-
-- Galileo VEEGA reference reconstruction
-- JUICE reference trajectory reconstruction
-- JUICE SPICE truth comparison
-
-Current classical validation examples include:
-
-- `validate_galileo_veega_reference.m`
-- `validate_juice_reference_trajectory.m`
-- `validate_juice_spice_truth_comparison.m`
-
-#### Demos
-
-Located in `examples/classical/demos`
-
-These include more polished showcase workflows such as:
-
-- NEO screening
-- end-to-end Earth–Mars mission design
-- Earth–Venus–Earth–Jupiter MGA example
-- Earth–Mars patched-conics analysis
-- Earth–Mars window scan
-- constrained planetary mission design under `\Delta v` limits
-
-Current classical demo examples include:
-
-- `demo_screen_nea_targets.m`
-- `demo_end_to_end_earth_mars_mission_design.m`
-- `demo_earth_venus_earth_jupiter.m`
-- `demo_planetary_mission_minTOF_under_dv_constraint.m`
-- `demo_earth_mars_window_scan.m`
-- `demo_earth_mars_patched_conics.m`
-
----
-
-### CR3BP examples
-
-#### Testing
-
-Located in `examples/cr3bp/testing`
-
-These cover development steps such as:
-
-- Lagrange points and zero-velocity curves
-- JPL periodic-orbit seed retrieval
-- family plotting
-- planar Lyapunov correction
-- single-shooting and multiple-shooting periodic correction
-- natural parameter continuation
-
-Current CR3BP testing examples include:
-
-- `test_cr3bp_lagrange_and_zvc.m`
-- `test_jpl_periodic_orbit_seed.m`
-- `test_jpl_full_family_plot.m`
-- `test_planar_lyapunov_differential_correction.m`
-- `test_single_shooting_periodic.m`
-- `test_multiple_shooting_periodic.m`
-- `test_natural_parameter_continuation.m`
-
-#### Validation
-
-Located in `examples/cr3bp/validation`
-
-These include benchmark-oriented scripts such as:
-
-- halo eigenspectrum inspection
-- Howell (1984) halo-family validation
-- Howell-style manifold-surface validation
-
-Current CR3BP validation examples include:
-
-- `validate_halo_eigenspectrum_inspection.m`
-- `validate_howell1984_halo_family.m`
-- `validate_howell1984_manifold_surface.m`
-
-#### Demos
-
-Located in `examples/cr3bp/demos`
-
-These showcase higher-level workflows such as:
-
-- pseudo-arclength continuation
-- family stability analysis
-- manifold generation
-- Poincaré section analysis
-- halo differential correction
-- halo family continuation
-- halo manifold-tube visualization
-
-Current CR3BP demo examples include:
-
-- `demo_pseudo_arclength_continuation.m`
-- `demo_family_stability_analysis.m`
-- `demo_manifold_generation.m`
-- `demo_poincare_section_manifolds.m`
-- `demo_halo_differential_correction.m`
-- `demo_halo_family_continuation.m`
-- `demo_halo_family_stability_analysis.m`
-- `demo_halo_manifold_tubes.m`
-
----
-
-## Getting Started
-
-### 1. Clone the repository
-
+### 1. Installation
+Clone the repository to your local machine:
 ```bash
 git clone https://github.com/gianlumolinari/AstrodynamicsToolbox.git
 cd AstrodynamicsToolbox
 ```
 
-2. Open MATLAB in the repository root
-Then run:
-
+### 2. Initialization
+Open MATLAB in the repository root and run the startup script. This will automatically add the toolbox and necessary data folders to your MATLAB path.
 ```matlab
 startup
 ```
-This adds the toolbox and example folders to the MATLAB path.
 
-Suggested Starting Points
+### 3. Explore Interactive Live Scripts
+If you are new to the toolbox, the best way to start is by opening the interactive MATLAB Live Scripts (`.mlx`) located in the `liveScripts/` directory:
+* `classical_astrodynamics.mlx`: Orbit geometry, propagation, perturbations, Lambert transfers, and MGA workflows.
+* `cr3bp_dynamical_systems.mlx`: Zero-velocity curves, periodic orbits, differential correction, continuation, and manifolds.
 
-If you are new to the toolbox, these are good entry points.
+---
 
-Classical
-	- examples/classical/testing/test_two_body_propagation.m
-	- examples/classical/testing/test_basic_lambert.m
-	- examples/classical/validation/validate_juice_spice_truth_comparison.m
-	- examples/classical/demos/demo_end_to_end_earth_mars_mission_design.m
+## 🛰️ Core Capabilities
 
-CR3BP
-	- examples/cr3bp/testing/test_cr3bp_lagrange_and_zvc.m
-	- examples/cr3bp/testing/test_planar_lyapunov_differential_correction.m
-	- examples/cr3bp/validation/validate_howell1984_halo_family.m
-	- examples/cr3bp/demos/demo_halo_family_continuation.m
-	- examples/cr3bp/demos/demo_poincare_section_manifolds.m
+The toolbox is actively developed along two main branches:
 
-⸻
+### 1. Classical Astrodynamics
+* **Core Mechanics:** Two-body propagation, Cartesian/orbital-element conversions, Lambert solvers (Izzo and universal).
+* **Mission Design:** Hohmann and patched-conics transfers, multiple-gravity-assist (MGA) workflows, small-body/NEO screening.
+* **Perturbations:** J2, atmospheric drag, and third-body perturbation modeling.
+* **Geometry & Access:** Topocentric visibility, ground-station access, eclipse, and conical shadow checks.
+* **Validation:** SPICE-based ephemerides retrieval, mission reconstruction, and validation.
 
-Validation Strategy
+### 2. CR3BP & Dynamical Systems
+* **Fundamentals:** Equations of motion, zero-velocity curves, and Lagrange point computation.
+* **Periodic Orbits:** JPL periodic-orbit seed retrieval, single/multiple-shooting correction, planar Lyapunov, and halo differential correction.
+* **Continuation & Stability:** Natural and pseudo-arclength continuation, monodromy matrix analysis, eigenspectrums, and stability diagnostics.
+* **Manifolds:** Stable/unstable manifold generation and Poincaré sections.
+* **Validation:** Benchmarked against literature (e.g., Howell 1984).
 
-A core design goal of the toolbox is benchmark consistency.
+---
 
-Validation workflows currently include comparison against:
-	- SPICE truth trajectories for mission reconstruction examples
-	- JPL periodic-orbit seeds for CR3BP family studies
-	- literature benchmarks such as Howell (1984) for halo orbits
+## 💻 Quick Start Examples
 
-This makes the toolbox useful not only for development and exploration, but also for reproducible astrodynamics studies.
+### Classical Propagation Example
+```matlab
+startup
 
-⸻
+mu = 398600.4418; % Earth gravitational parameter
+[r0, v0] = astro.coords.coe2rv(12000, 0.25, 35, 40, 60, 20, mu);
 
-Development Status
+out = astro.propagators.propagate( ...
+    @(t,x) astro.propagators.eomTwoBody(t, x, mu), ...
+    [0 10000], [r0; v0]);
+```
 
-This is an ongoing project.
+### CR3BP Propagation Example
+```matlab
+startup
 
-The current focus is on building a robust and extensible foundation for:
-	- classical mission design workflows
-	- CR3BP periodic orbit computation and continuation
-	- invariant manifold analysis
-	- benchmark validation against literature and ephemerides
+mu = 0.012150585609624;   % Earth-Moon mass ratio
+L = astro.cr3bp.lagrangePoints(mu);
 
-Planned future directions include:
-	- more automated regression tests
-	- additional optimization workflows
-	- improved manifold-surface visualization
-	- expanded small-body targeting tools
-	- higher-fidelity models beyond the CR3BP
+x0 = [L.L1(1)-0.01; 0; 0; 0; 0.1; 0];
+C = astro.cr3bp.jacobiConstant(x0, mu);
 
-⸻
+out = astro.propagators.propagate( ...
+    @(t,x) astro.cr3bp.eomCR3BP(t, x, mu), ...
+    [0 5], x0);
+```
 
-Design Principles
+---
 
-The toolbox is being developed with the following priorities:
-	- modularity — reusable functions under the +astro package
-	- transparency — examples written as readable workflows rather than black boxes
-	- validation — benchmark scripts included alongside development and demo cases
-	- research utility — suitable for both learning and more advanced exploratory work
+## 📁 Repository Structure
 
-⸻
+The core functionality lives in the `+astro/` package, ensuring modularity and preventing namespace clashes.
 
-Notes
-	- Most examples are written as transparent scripts to make the workflow easy to inspect and adapt.
-	- Validation scripts are especially useful as reference cases when extending the toolbox.
-	- The CR3BP branch is being developed with a strong emphasis on literature consistency and benchmark reproducibility.
-	- Some visualizations, especially invariant-manifold plots, may continue to evolve as benchmark cases and plotting conventions are refined.
+```text
+AstrodynamicsToolbox/
+├── +astro/                     % Main MATLAB package containing the toolbox source code
+│   ├── +bodies/                % Celestial body definitions, physical parameters, and constants
+│   ├── +constants/             % General constants used across the toolbox
+│   ├── +continuation/          % General continuation algorithms and family-tracking utilities
+│   ├── +coords/                % Coordinate, frame, and orbital-element conversions
+│   ├── +cr3bp/                 % CR3BP dynamics, differential correction, continuation, and manifolds
+│   ├── +ephem/                 % SPICE/Horizons interfaces, kernel loading, and ephemeris retrieval
+│   ├── +geometry/              % Geometric tools such as occultation, eclipse, and line-of-sight checks
+│   ├── +lambert/               % Lambert problem solvers (e.g. Izzo and universal-variable methods)
+│   ├── +maneuvers/             % Classical maneuver analysis and mission-design utilities
+│   ├── +manifolds/             % General manifold-related utilities outside the CR3BP-specific package
+│   ├── +mga/                   % Multiple-gravity-assist trajectory utilities
+│   ├── +opt/                   % Optimization and design support tools
+│   ├── +periodic/              % Periodic-orbit helpers and related utilities
+│   ├── +perturbations/         % Perturbation models such as J2, drag, SRP, and third-body effects
+│   ├── +plot/                  % Plotting and visualization utilities for trajectories and dynamical structures
+│   ├── +propagators/           % Numerical propagation routines, including two-body, Cowell, STM, and high-fidelity models
+│   ├── +smallbody/             % Small-body and asteroid-related utilities
+│   ├── +units/                 % Unit-conversion helpers
+│   ├── +utils/                 % General-purpose utilities (e.g. energy, angular momentum, helper routines)
+│   └── +visibility/            % Visibility, access, and observation geometry tools
+├── data/                       % SPICE kernels and auxiliary mission/ephemeris data (JUICE, DART, HERA, etc.)
+├── docs/                       % Documentation, notes, derivations, and longer-form writeups
+├── examples/                   % Example scripts organised by domain and purpose (testing, validation, demos)
+├── external/                   % External dependencies, including the NAIF MICE/SPICE MATLAB interface
+├── liveScripts/                % Interactive MATLAB Live Scripts for guided exploration of the toolbox
+└── startup.m                   % Initialization script that adds the toolbox folders to the MATLAB path
 
-⸻
+```
+### CR3BP package
+The `+astro/+cr3bp` package contains the main dynamical systems functionality.
 
-Author
+```text
++astro/+cr3bp/
+├── eomCR3BP.m                        % CR3BP equations of motion
+├── variationalEOM.m                  % CR3BP variational equations for STM propagation
+├── effectivePotential.m              % Effective potential Ω(x,y,z)
+├── jacobiConstant.m                  % Jacobi integral evaluation
+├── lagrangePoints.m                  % L1–L5 computation
+│
+├── propagateWithSTM.m                % State + STM propagation
+├── monodromyMatrix.m                 % Monodromy matrix over one orbit period
+├── stabilityIndices.m                % Stability metrics from monodromy eigenstructure
+│
+├── differentialCorrectionPlanarLyapunov.m   % Planar Lyapunov differential correction
+├── differentialCorrectionHalo.m               % Halo differential correction
+├── singleShootingCorrector.m                  % Generic single-shooting corrector
+├── multipleShootingCorrector.m                % Multiple-shooting corrector
+│
+├── continueFamilyNatural.m           % Natural-parameter family continuation
+├── continueFamilyPseudoArc.m         % Pseudo-arclength continuation
+├── continueHaloPseudoArc.m           % Halo-family pseudo-arclength continuation
+├── correctPlanarLyapunovPseudoArc.m  % Planar pseudo-arclength corrector step
+├── correctHaloPseudoArc.m            % Halo pseudo-arclength corrector step
+│
+├── manifoldSeeds.m                   % Generic manifold seed generation
+├── haloManifoldSeeds.m               % Halo manifold seed rings from stable/unstable subspaces
+├── haloManifoldBranch.m              % Ross-style halo manifold branch seeds
+├── howellManifoldBranch.m            % Howell-style manifold branch helper
+├── propagateManifold.m               % Manifold trajectory propagation
+│
+├── propagateToSection.m              % Propagate trajectory to a section crossing
+├── collectPoincareSection.m          % Collect section crossings from multiple seeds
+│
+├── queryJPLPeriodicOrbits.m          % Query JPL periodic-orbit database
+└── parseJPLPeriodicOrbit.m           % Parse JPL periodic-orbit data into toolbox format
+```
+### Examples and Live scripts
+The examples and live scripts are intended to provide interactive, visual entry points into the toolbox:
 
-Gianluca Molinari
-Astrodynamics / trajectory design / CR3BP / mission analysis
 
+```text
+examples/
+├── classical/
+│   ├── testing/                      % Development and debugging scripts
+│   ├── validation/                   % SPICE / literature / mission validation workflows
+│   └── demos/                        % End-to-end showcase examples
+│
+└── cr3bp/
+    ├── testing/                      % Differential correction, continuation, STM, manifolds
+    ├── validation/                   % Benchmark comparisons and reference checks
+    └── demos/                        % Halo families, manifold visualisation, Poincaré maps
+
+liveScripts/
+├── classical_astrodynamics.mlx       % Interactive introduction to two-body, Lambert, perturbations, MGA
+└── cr3bp_dynamical_systems.mlx       % Interactive introduction to CR3BP, periodic orbits, continuation, manifolds
+```
+## ✅ Validation Strategy
+
+A core design goal of the toolbox is **benchmark consistency and transparency**.  
+Most workflows are implemented as readable scripts rather than opaque black boxes, making it easier to verify assumptions, inspect intermediate quantities, and compare against references.
+
+The `examples/` directory is organised into three categories:
+
+1. **`testing/`** — development and debugging scripts used to verify implementations and convergence behaviour  
+2. **`validation/`** — comparisons against literature, tabulated benchmarks, or SPICE truth trajectories  
+3. **`demos/`** — polished end-to-end workflows showcasing the toolbox capabilities
+
+---
+
+## 🗺️ Roadmap & Philosophy
+
+This is an actively evolving project built around **modularity**, **transparency**, and **rigorous validation**.
+
+Planned directions include:
+- automated regression and unit testing
+- expanded optimisation and targeting workflows
+- higher-fidelity perturbation models
+- improved manifold and family visualisation tools
+- additional mission design case studies and benchmark reproductions
+
+---
+
+## Author
+
+**Gianluca Molinari**  
+Astrodynamics | Trajectory Design | CR3BP | Mission Analysis
