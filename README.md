@@ -63,6 +63,20 @@ mu = 398600.4418; % Earth gravitational parameter
 out = astro.propagators.propagate( ...
     @(t,x) astro.propagators.eomTwoBody(t, x, mu), ...
     [0 10000], [r0; v0]);
+
+figure
+plot3(out.x(:,1), out.x(:,2), out.x(:,3), 'LineWidth', 1.8)
+hold on
+plot3(out.x(1,1), out.x(1,2), out.x(1,3), 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
+plot3(0, 0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5)
+grid on
+axis equal
+xlabel('x [km]')
+ylabel('y [km]')
+zlabel('z [km]')
+title('Two-Body Orbit Propagation')
+legend('Trajectory', 'Initial state', 'Earth', 'Location', 'best')
+view(3)
 ```
 
 ### CR3BP Propagation Example
@@ -78,6 +92,21 @@ C = astro.cr3bp.jacobiConstant(x0, mu);
 out = astro.propagators.propagate( ...
     @(t,x) astro.cr3bp.eomCR3BP(t, x, mu), ...
     [0 5], x0);
+
+figure
+plot3(out.x(:,1), out.x(:,2), out.x(:,3), 'LineWidth', 1.8)
+hold on
+plot3(x0(1), x0(2), x0(3), 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
+plot3(-mu, 0, 0, 'o', 'MarkerSize', 10, 'LineWidth', 1.5)
+plot3(1-mu, 0, 0, 'o', 'MarkerSize', 8, 'LineWidth', 1.5)
+grid on
+axis equal
+xlabel('x [-]')
+ylabel('y [-]')
+zlabel('z [-]')
+title('CR3BP Trajectory Propagation')
+legend('Trajectory', 'Initial state', 'Primary 1', 'Primary 2', 'Location', 'best')
+view(3)
 ```
 
 ---
