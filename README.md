@@ -59,10 +59,10 @@ startup
 
 mu = 398600.4418; % Earth gravitational parameter
 [r0, v0] = astro.coords.coe2rv(12000, 0.25, 35, 40, 60, 20, mu);
-
+T = astro.maneuvers.orbitalPeriod(12000, mu);
 out = astro.propagators.propagate( ...
     @(t,x) astro.propagators.eomTwoBody(t, x, mu), ...
-    [0 10000], [r0; v0]);
+    [0 T], [r0; v0]);
 
 figure
 plot3(out.x(:,1), out.x(:,2), out.x(:,3), 'LineWidth', 1.8)
