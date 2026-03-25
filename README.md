@@ -3,9 +3,10 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)
 
-A modular MATLAB toolbox for **classical astrodynamics**, **trajectory design**, and **CR3BP dynamical systems analysis**. 
+A modular MATLAB toolbox for **classical astrodynamics**, **trajectory design**, **CR3BP** and **dynamical systems** analysis. 
 
 Designed to be highly transparent and strictly validated, this toolbox provides a robust foundation for everything from two-body propagation and Lambert/patched-conics design to advanced periodic orbit computation, continuation methods, and SPICE-based ephemeris validation. It is built for both educational learning and advanced research.
+
 ---
 
 ## 🚀 Getting Started
