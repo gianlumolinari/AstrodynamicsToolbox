@@ -45,15 +45,14 @@ for k = 1:maxIter
     stateHalf = YE(1,1:6).';
     PhiHalf = reshape(YE(1,7:end), 6, 6);
 
-    xf  = stateHalf(1);
-    yf  = stateHalf(2);
-    zf  = stateHalf(3);
     xdf = stateHalf(4);
     ydf = stateHalf(5);
-    zdf = stateHalf(6);
 
     traj.t = tHist;
     traj.Y = YHist;
+
+    fprintf('    DC iter %2d: xdot(half) = %+ .3e, vy = %.16f, thalf = %.16f\n', ...
+        k, xdf, vy, tE(1));
 
     if abs(xdf) < tol
         converged = true;
@@ -65,10 +64,14 @@ for k = 1:maxIter
     xddf = fHalf(4);
 
     % Time-corrected sensitivity
+    if abs(ydf) < 1e-12
+        error('Differential correction became singular because ydot at crossing is too small.');
+    end
+
     denom = PhiHalf(4,5) - (xddf / ydf) * PhiHalf(2,5);
 
-    if abs(ydf) < 1e-12 || abs(denom) < 1e-12
-        error('Differential correction became singular.');
+    if abs(denom) < 1e-12
+        error('Differential correction became singular because denominator is too small.');
     end
 
     dvy = -xdf / denom;
@@ -91,11 +94,15 @@ out.trajectory = traj;
 end
 
 function [value, isterminal, direction] = localYCrossingEvent(t, Y)
+% We start at y=0 with vy>0, so the half-period crossing is the NEXT
+% y=0 crossing with negative direction (downward crossing).
+
 if t < 1e-6
     value = 1;
 else
     value = Y(2);
 end
+
 isterminal = 1;
-direction = 1;
+direction = -1;
 end

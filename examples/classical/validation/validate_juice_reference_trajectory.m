@@ -1,250 +1,219 @@
 clc;
 clear;
 close all;
-cd('/Users/gianlucamolinari/Desktop/AstroToolbox')
+
+cd('/Users/gianlucamolinari/Desktop/astroToolbox')
 startup
 
-% Load generic planetary kernels
+% ==========================================================
+% JUICE full heliocentric comparison:
+% piecewise HF propagation between gravity-assist anchors
+% vs full SPICE truth
+% ==========================================================
+
+% Reset SPICE and load kernels
+cspice_kclear;
 astro.ephem.loadSpiceKernels(fullfile(pwd, 'data', 'spice'));
 
-% ==========================================================
-% JUICE Reference Trajectory Reconstruction & SPICE Truth Comparison
-% ==========================================================
-sun     = astro.bodies.getBody('sun');
-earth   = astro.bodies.getBody('earth');
-venus   = astro.bodies.getBody('venus');
-jupiter = astro.bodies.getBody('jupiter');
+juiceKernelDir = fullfile(pwd, 'data', 'spice', 'juice');
+if exist(juiceKernelDir, 'dir') ~= 7
+    error('JUICE mission kernel directory not found:\n%s', juiceKernelDir);
+end
+astro.ephem.loadSpiceKernels(juiceKernelDir);
 
 % ----------------------------------------------------------
-% Heliocentric sequence & Dates
+% Bodies
 % ----------------------------------------------------------
-sequence = {'earth','earth','venus','earth','earth','jupiter'};
-dates = {
+mercury = astro.bodies.getBody('mercury');
+venus   = astro.bodies.getBody('venus');
+earth   = astro.bodies.getBody('earth');
+moon    = astro.bodies.getBody('moon');
+mars    = astro.bodies.getBody('mars');
+jupiter = astro.bodies.getBody('jupiter');
+saturn  = astro.bodies.getBody('saturn');
+
+% ----------------------------------------------------------
+% Resolve JUICE target
+% ----------------------------------------------------------
+candidateTargets = {'JUICE', 'JUICE SPACECRAFT', '-28'};
+juiceTarget = '';
+
+for k = 1:numel(candidateTargets)
+    try
+        tmp = astro.ephem.getSpiceState(candidateTargets{k}, ...
+            '2023-04-14 12:14:00', 'SUN', 'J2000', 'NONE');
+        juiceTarget = tmp.target;
+        break
+    catch
+    end
+end
+
+if isempty(juiceTarget)
+    error('Could not resolve JUICE spacecraft target name automatically.');
+end
+
+fprintf('Resolved JUICE spacecraft target as: %s\n', juiceTarget);
+
+% ----------------------------------------------------------
+% Segment anchors
+% These are the epochs at which the trajectory is reset from SPICE,
+% so the gravity assists are incorporated segment by segment.
+% ----------------------------------------------------------
+epochs = { ...
     '2023-04-14 12:14:00'   % launch
-    '2024-08-20 21:56:00'   % LEGA Earth flyby anchor
-    '2025-08-31 00:00:00'   % Venus flyby
+    '2024-08-20 21:56:00'   % LEGA anchor
+    '2025-08-31 00:00:00'   % Venus flyby anchor
     '2026-09-01 00:00:00'   % Earth flyby anchor
     '2029-01-01 00:00:00'   % Earth flyby anchor
     '2031-07-01 00:00:00'   % Jupiter arrival anchor
-};
-planetNames = {'Earth','Earth (LEGA)','Venus','Earth','Earth','Jupiter'};
+    };
+
+segmentNames = { ...
+    'Launch to LEGA'
+    'LEGA to Venus'
+    'Venus to Earth'
+    'Earth to Earth'
+    'Earth to Jupiter'
+    };
+
+% ----------------------------------------------------------
+% High-fidelity propagation config
+% ----------------------------------------------------------
+configHF = struct();
+configHF.RelTol   = 1e-12;
+configHF.AbsTol   = 1e-12;
+configHF.Cr       = 1.2;
+configHF.A_over_m = 0.0;
+
+configHF.bodyNames = { ...
+    'MERCURY BARYCENTER', ...
+    'VENUS BARYCENTER', ...
+    'EARTH BARYCENTER', ...
+    'MOON', ...
+    'MARS BARYCENTER', ...
+    'JUPITER BARYCENTER', ...
+    'SATURN BARYCENTER'};
+
+configHF.muBodies = [ ...
+    mercury.mu, ...
+    venus.mu, ...
+    earth.mu, ...
+    moon.mu, ...
+    mars.mu, ...
+    jupiter.mu, ...
+    saturn.mu];
+
+% ----------------------------------------------------------
+% Piecewise HF propagation
+% ----------------------------------------------------------
+fprintf('\n============================================================\n');
+fprintf('Piecewise high-fidelity propagation through assist anchors\n');
+fprintf('============================================================\n');
+
+xHFfull = [];
+tHFfull = [];
+
+for i = 1:(numel(epochs)-1)
+
+    t0UTC = epochs{i};
+    tfUTC = epochs{i+1};
+
+    et0 = cspice_str2et(t0UTC);
+    etf = cspice_str2et(tfUTC);
+    tof = etf - et0;
+
+    sc0 = astro.ephem.getSpiceState(juiceTarget, t0UTC, 'SUN', 'J2000', 'NONE');
+    x0 = [sc0.r; sc0.v];
+
+    fprintf('\nSegment %d: %s\n', i, segmentNames{i});
+    fprintf('  Start: %s\n', t0UTC);
+    fprintf('  End  : %s\n', tfUTC);
+    fprintf('  TOF  : %.2f days\n', tof/86400);
+
+    outHF = astro.propagators.propagateHighFidelity(x0, et0, tof, configHF);
+
+    if i == 1
+        xHFfull = outHF.x;
+        tHFfull = et0 + outHF.t;
+    else
+        xHFfull = [xHFfull; outHF.x(2:end,:)]; %#ok<AGROW>
+        tHFfull = [tHFfull; et0 + outHF.t(2:end)]; %#ok<AGROW>
+    end
+
+    scf = astro.ephem.getSpiceState(juiceTarget, tfUTC, 'SUN', 'J2000', 'NONE');
+    xEnd = outHF.x(end,:).';
+
+    posErr = norm(xEnd(1:3) - scf.r);
+    velErr = norm(xEnd(4:6) - scf.v);
+
+    fprintf('  Terminal position error : %12.3f km\n', posErr);
+    fprintf('  Terminal velocity error : %12.6f km/s\n', velErr);
+end
+
+% ----------------------------------------------------------
+% Full SPICE truth sampled over same stitched epochs
+% ----------------------------------------------------------
+fprintf('\nSampling SPICE truth along stitched propagated epochs...\n');
+
+xTruthFull = zeros(numel(tHFfull), 6);
+
+for k = 1:numel(tHFfull)
+    utcK = cspice_et2utc(tHFfull(k), 'C', 0);
+    scK = astro.ephem.getSpiceState(juiceTarget, utcK, 'SUN', 'J2000', 'NONE');
+    xTruthFull(k,:) = [scK.r(:).' scK.v(:).'];
+end
+
+% ----------------------------------------------------------
+% Global errors along stitched trajectory
+% ----------------------------------------------------------
+posErrHist = vecnorm(xHFfull(:,1:3) - xTruthFull(:,1:3), 2, 2);
+velErrHist = vecnorm(xHFfull(:,4:6) - xTruthFull(:,4:6), 2, 2);
 
 fprintf('\n============================================================\n');
-fprintf('JUICE Reference Trajectory Reconstruction & Analysis\n');
+fprintf('Global stitched-trajectory comparison\n');
 fprintf('============================================================\n');
-fprintf('\nEncounter epochs used:\n');
-for k = 1:numel(sequence)
-    fprintf('  %-8s : %s\n', upper(sequence{k}), dates{k});
-end
-fprintf('\nNote: the 2024 lunar-Earth gravity assist is represented here\n');
-fprintf('as a single Earth-system flyby in the heliocentric chain.\n');
+fprintf('  Final position error : %12.3f km\n', posErrHist(end));
+fprintf('  Final velocity error : %12.6f km/s\n', velErrHist(end));
+fprintf('  Max position error   : %12.3f km\n', max(posErrHist));
+fprintf('  Max velocity error   : %12.6f km/s\n', max(velErrHist));
+fprintf('  RMS position error   : %12.3f km\n', sqrt(mean(posErrHist.^2)));
+fprintf('  RMS velocity error   : %12.6f km/s\n', sqrt(mean(velErrHist.^2)));
 
 % ----------------------------------------------------------
-% Propagate heliocentric Lambert legs
+% Plot full heliocentric comparison
 % ----------------------------------------------------------
-traj = astro.mga.propagateMGA(sequence, dates, sun.mu, 'spice');
-
-% ----------------------------------------------------------
-% Flyby feasibility setup & Leg Summary
-% ----------------------------------------------------------
-bodyMap.earth = earth;
-bodyMap.venus = venus;
-minAltMap.earth = 300;   % km
-minAltMap.venus = 300;   % km
-report = astro.mga.evaluateMGA(traj, bodyMap, minAltMap, 1e-3);
-
-fprintf('\nLeg summary:\n');
-for k = 1:numel(traj.legs)
-    fprintf('\nLeg %d: %s -> %s\n', ...
-        k, upper(traj.legs(k).bodyDepart), upper(traj.legs(k).bodyArrive));
-    fprintf('  TOF                 : %.2f days\n', traj.legs(k).tofDays);
-    fprintf('  |v_inf,dep|         : %.6f km/s\n', traj.legs(k).vInfDepMag);
-    fprintf('  |v_inf,arr|         : %.6f km/s\n', traj.legs(k).vInfArrMag);
-end
-
-fprintf('\nFlyby diagnostic summary:\n');
-for k = 1:report.nFlybys
-    fb = report.flybys(k);
-    chk = fb.check;
-    fprintf('\nFlyby at %s\n', upper(fb.body));
-    fprintf('  Incoming |v_inf^-|       : %.6f km/s\n', chk.magIn);
-    fprintf('  Required |v_inf^+|       : %.6f km/s\n', chk.magOutReq);
-    fprintf('  Magnitude mismatch       : %.6f km/s\n', chk.magMismatch);
-    fprintf('  Required turn angle      : %.6f deg\n', chk.deltaReqDeg);
-    fprintf('  Max turn angle @ rpMin   : %.6f deg\n', chk.deltaMaxDeg);
-    fprintf('  Feasible (ballistic)     : %d\n', chk.feasible);
-end
-
-% Mission-level summary
-launchC3 = traj.legs(1).vInfDepMag^2;
-arrivalVInfJupiter = traj.legs(end).vInfArrMag;
-totalTOFdays = sum([traj.legs.tofDays]);
-fprintf('\nMission-level summary:\n');
-fprintf('  Launch C3                 : %.6f km^2/s^2\n', launchC3);
-fprintf('  Jupiter arrival v_inf     : %.6f km/s\n', arrivalVInfJupiter);
-fprintf('  Total time of flight      : %.2f days\n', totalTOFdays);
-fprintf('  Total time of flight      : %.2f years\n', totalTOFdays / 365.25);
-
-% ----------------------------------------------------------
-% Flyby 2D Plots
-% ----------------------------------------------------------
-rpEarth = earth.radius + minAltMap.earth;
-rpVenus = venus.radius + minAltMap.venus;
-
-% LEGA Earth-system flyby
-astro.plot.plotFlyby2D(traj.legs(1).vInfArr, traj.legs(2).vInfDep, earth.mu, rpEarth, +1, earth.radius, 'Earth (LEGA)');
-% Venus flyby
-astro.plot.plotFlyby2D(traj.legs(2).vInfArr, traj.legs(3).vInfDep, venus.mu, rpVenus, +1, venus.radius, 'Venus');
-% Earth flyby
-astro.plot.plotFlyby2D(traj.legs(3).vInfArr, traj.legs(4).vInfDep, earth.mu, rpEarth, +1, earth.radius, 'Earth');
-% Earth flyby
-astro.plot.plotFlyby2D(traj.legs(4).vInfArr, traj.legs(5).vInfDep, earth.mu, rpEarth, +1, earth.radius, 'Earth');
-
-% ----------------------------------------------------------
-% Build reconstructed Lambert trajectory samples for plotting
-% ----------------------------------------------------------
-rRecon = [];
-for k = 1:numel(traj.legs)
-    x0Leg = [traj.legs(k).r1; traj.legs(k).v1];
-    tspan = [0, traj.legs(k).tofSec];
-    optsProp.RelTol = 1e-11;
-    optsProp.AbsTol = 1e-11;
-    optsProp.Solver = 'ode113';
-    out = astro.propagators.propagate( ...
-        @(t,x) astro.propagators.eomTwoBody(t, x, sun.mu), ...
-        tspan, x0Leg, optsProp);
-    rRecon = [rRecon; out.x(:,1:3)]; %#ok<AGROW>
-end
-
-% ----------------------------------------------------------
-% SPICE Truth Comparison & Heliocentric Overview Plot
-% ----------------------------------------------------------
-juiceKernelDir = fullfile(pwd, 'data', 'spice', 'juice');
-hasJuiceDir = exist(juiceKernelDir, 'dir') == 7;
-
 figure('Color','w');
-hold on; axis equal; grid on;
-hSun = plot(0, 0, 'ko', 'MarkerSize', 10, 'LineWidth', 1.5, 'DisplayName', 'Sun');
-hRecon = plot(rRecon(:,1), rRecon(:,2), 'b-', 'LineWidth', 1.3, 'DisplayName', 'Lambert reconstruction');
+hold on;
+grid on;
+axis equal;
+
+plot(0, 0, 'ko', ...
+    'MarkerSize', 10, ...
+    'LineWidth', 1.5, ...
+    'DisplayName', 'Sun');
+
+plot(xTruthFull(:,1), xTruthFull(:,2), 'k--', ...
+    'LineWidth', 1.6, ...
+    'DisplayName', 'JUICE SPICE truth');
+
+plot(xHFfull(:,1), xHFfull(:,2), 'b-', ...
+    'LineWidth', 1.8, ...
+    'DisplayName', 'Piecewise HF propagated');
+
+% Anchor markers
+for i = 1:numel(epochs)
+    scA = astro.ephem.getSpiceState(juiceTarget, epochs{i}, 'SUN', 'J2000', 'NONE');
+    plot(scA.r(1), scA.r(2), 'ro', ...
+        'MarkerSize', 6, ...
+        'LineWidth', 1.2, ...
+        'HandleVisibility', 'off');
+end
+
 xlabel('x [km]', 'FontSize', 13, 'FontWeight', 'bold');
 ylabel('y [km]', 'FontSize', 13, 'FontWeight', 'bold');
+title('JUICE Full Heliocentric Trajectory: Piecewise HF vs SPICE', ...
+    'FontSize', 15, 'FontWeight', 'bold');
 
-if hasJuiceDir
-    fprintf('\n============================================================\n');
-    fprintf('JUICE SPICE Truth Validation\n');
-    fprintf('============================================================\n');
-    fprintf('Loading JUICE mission kernels from:\n  %s\n', juiceKernelDir);
-    
-    try
-        localLoadJuiceKernels(juiceKernelDir);
-        
-        % Resolve JUICE spacecraft target name
-        candidateTargets = {'JUICE', 'JUICE SPACECRAFT', '-28'};
-        juiceTarget = '';
-        testEpoch = dates{1};
-        for k = 1:numel(candidateTargets)
-            try
-                tmp = astro.ephem.getSpiceState(candidateTargets{k}, testEpoch, 'SUN', 'J2000', 'NONE');
-                juiceTarget = tmp.target;
-                break
-            catch
-            end
-        end
-        
-        if isempty(juiceTarget)
-            error('Could not resolve JUICE target name automatically.');
-        end
-        fprintf('Resolved JUICE spacecraft target as: %s\n', juiceTarget);
-        
-        % Sample real JUICE spacecraft trajectory from SPICE
-        t0 = datetime(dates{1}, 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
-        tf = datetime(dates{end}, 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
-        nSamples = 1200;
-        tHist = linspace(posixtime(t0), posixtime(tf), nSamples);
-        tHist = datetime(tHist, 'ConvertFrom', 'posixtime');
-        rJuice = zeros(nSamples, 3);
-        
-        fprintf('Sampling real JUICE trajectory from SPICE...\n');
-        for k = 1:nSamples
-            epochUTC = datestr(tHist(k), 'yyyy-mm-dd HH:MM:SS');
-            sc = astro.ephem.getSpiceState(juiceTarget, epochUTC, 'SUN', 'J2000', 'NONE');
-            rJuice(k,:) = sc.r(:).';
-        end
-        
-        % Plot Truth Overlays
-        hTruth = plot(rJuice(:,1), rJuice(:,2), 'g--', 'LineWidth', 1.4, 'DisplayName', 'JUICE SPICE truth');
-        hTruthPts = plot(nan, nan, 'go', 'MarkerSize', 7, 'LineWidth', 1.2, 'DisplayName', 'JUICE encounter states');
-        hReconPts = plot(nan, nan, 'bs', 'MarkerSize', 7, 'LineWidth', 1.2, 'DisplayName', 'Reconstructed encounter states');
-        
-        fprintf('\nEncounter state comparison:\n');
-        fprintf('------------------------------------------------------------\n');
-        for k = 1:numel(dates)
-            epochUTC = dates{k};
-            sc = astro.ephem.getSpiceState(juiceTarget, epochUTC, 'SUN', 'J2000', 'NONE');
-            plot(sc.r(1), sc.r(2), 'go', 'MarkerSize', 7, 'LineWidth', 1.2);
-            
-            if k == 1
-                rRef = traj.legs(1).r1;
-                vRef = traj.legs(1).v1;
-            elseif k == numel(dates)
-                rRef = traj.legs(end).r2;
-                vRef = traj.legs(end).v2;
-            else
-                rRef = traj.legs(k-1).r2;
-                vRef = traj.legs(k-1).v2;
-            end
-            plot(rRef(1), rRef(2), 'bs', 'MarkerSize', 7, 'LineWidth', 1.2);
-            
-            % Planet/encounter labels
-            text(sc.r(1), sc.r(2), ['  ' planetNames{k}], ...
-                'FontSize', 10, 'FontWeight', 'bold', ...
-                'HorizontalAlignment', 'left', 'VerticalAlignment', 'middle');
-            
-            posErr = norm(sc.r - rRef);
-            velErr = norm(sc.v - vRef);
-            fprintf('%-19s  pos err = %12.3f km   vel err = %10.6f km/s\n', ...
-                epochUTC, posErr, velErr);
-        end
-        title('JUICE: SPICE Truth vs Lambert Reconstruction', 'FontSize', 15, 'FontWeight', 'bold');
-        legend([hSun, hRecon, hTruth, hTruthPts, hReconPts], 'Location', 'best');
-        
-    catch ME
-        fprintf('\nJUICE validation block failed.\nReason: %s\n', ME.message);
-        title('JUICE Reference Trajectory: Heliocentric Overview', 'FontSize', 15, 'FontWeight', 'bold');
-        legend([hSun, hRecon], 'Location', 'best');
-    end
-else
-    fprintf('\nNo JUICE mission SPICE directory detected at:\n  %s\n', juiceKernelDir);
-    fprintf('If you download ESA JUICE mission kernels there, this script will\n');
-    fprintf('automatically compare reconstructed states against the spacecraft SPK.\n');
-    
-    % Basic plotting fallback
-    hReconPts = plot(nan, nan, 'bs', 'MarkerSize', 7, 'LineWidth', 1.2, 'DisplayName', 'Encounters');
-    for k = 1:numel(traj.legs)
-        plot(traj.legs(k).r1(1), traj.legs(k).r1(2), 'bs', 'MarkerSize', 7, 'LineWidth', 1.2);
-        plot(traj.legs(k).r2(1), traj.legs(k).r2(2), 'bs', 'MarkerSize', 7, 'LineWidth', 1.2);
-    end
-    title('JUICE Reference Trajectory: Heliocentric Overview', 'FontSize', 15, 'FontWeight', 'bold');
-    legend([hSun, hRecon, hReconPts], 'Location', 'best');
-end
+legend('Location', 'best');
 
 fprintf('\nDone.\n');
-
-% ==========================================================
-% Helper Functions
-% ==========================================================
-function localLoadJuiceKernels(kernelDir)
-    files = dir(fullfile(kernelDir, '**', '*'));
-    for k = 1:numel(files)
-        if files(k).isdir
-            continue
-        end
-        [~,~,ext] = fileparts(files(k).name);
-        if any(strcmpi(ext, {'.bsp','.bc','.tf','.tls','.tpc','.tsc','.tm','.bpc'}))
-            try
-                cspice_furnsh(fullfile(files(k).folder, files(k).name));
-            catch
-            end
-        end
-    end
-end
