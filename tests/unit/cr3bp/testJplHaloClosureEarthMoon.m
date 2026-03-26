@@ -1,26 +1,26 @@
-classdef testJplJacobiDriftEarthMoon < matlab.unittest.TestCase
-    %TESTJPLJACOBIDRIFTEARTHMOON
-    % Validate Jacobi conservation while propagating Earth-Moon JPL halo
-    % orbits for one catalog period.
+classdef testJplHaloClosureEarthMoon < matlab.unittest.TestCase
+    %TESTJPLHALOCLOSUREEARTHMOON
+    % Validate Earth-Moon JPL halo orbits by propagating selected catalog
+    % states for one catalog period and checking periodic closure.
 
     methods (Test)
-        function testEarthMoonL1HaloNorthJacobiDrift(testCase)
+        function testEarthMoonL1HaloNorthClosure(testCase)
             benchmark = localLoadBenchmark('jpl_em_l1_halo_north.mat');
             mu = 0.012150585609624;
 
-            localCheckJacobiDrift(testCase, benchmark, mu);
+            localCheckClosure(testCase, benchmark, mu);
         end
 
-        function testEarthMoonL2HaloNorthJacobiDrift(testCase)
+        function testEarthMoonL2HaloNorthClosure(testCase)
             benchmark = localLoadBenchmark('jpl_em_l2_halo_north.mat');
             mu = 0.012150585609624;
 
-            localCheckJacobiDrift(testCase, benchmark, mu);
+            localCheckClosure(testCase, benchmark, mu);
         end
     end
 end
 
-function localCheckJacobiDrift(testCase, benchmark, mu)
+function localCheckClosure(testCase, benchmark, mu)
 
     T = benchmark.orbits;
     vars = lower(string(T.Properties.VariableNames));
@@ -41,8 +41,10 @@ function localCheckJacobiDrift(testCase, benchmark, mu)
     opts.AbsTol = 1e-12;
     opts.Solver = 'ode113';
 
-    maxDrift = 0;
-    worstOrbit = NaN;
+    maxPosErr = 0;
+    maxVelErr = 0;
+    worstRowPos = NaN;
+    worstRowVel = NaN;
 
     for k = 1:numel(idx)
         i = idx(k);
@@ -54,32 +56,41 @@ function localCheckJacobiDrift(testCase, benchmark, mu)
             @(t,x) astro.cr3bp.eomCR3BP(t, x, mu), ...
             [0 period], x0, opts);
 
-        C = astro.cr3bp.jacobiConstant(out.x, mu);
-        drift = max(abs(C - C(1)));
+        xf = out.x(end,:).';
 
-        fprintf('row = %d   period = %.15f   Jacobi drift = %.3e\n', ...
-            i, period, drift);
+        posErr = norm(xf(1:3) - x0(1:3));
+        velErr = norm(xf(4:6) - x0(4:6));
 
-        if drift > maxDrift
-            maxDrift = drift;
-            worstOrbit = i;
+        fprintf('row = %d   period = %.15f   posErr = %.3e   velErr = %.3e\n', ...
+            i, period, posErr, velErr);
+
+        if posErr > maxPosErr
+            maxPosErr = posErr;
+            worstRowPos = i;
+        end
+
+        if velErr > maxVelErr
+            maxVelErr = velErr;
+            worstRowVel = i;
         end
     end
 
-    fprintf('Worst Jacobi drift = %.3e at row %d\n', maxDrift, worstOrbit);
+    fprintf('Worst position closure error = %.3e at row %d\n', maxPosErr, worstRowPos);
+    fprintf('Worst velocity closure error = %.3e at row %d\n', maxVelErr, worstRowVel);
 
-    testCase.verifyLessThan(maxDrift, 1e-9, ...
-        sprintf('Maximum Jacobi drift too large: %.3e', maxDrift));
+    testCase.verifyLessThan(maxPosErr, 1e-8, ...
+        sprintf('Maximum position closure error too large: %.3e', maxPosErr));
+
+    testCase.verifyLessThan(maxVelErr, 1e-8, ...
+        sprintf('Maximum velocity closure error too large: %.3e', maxVelErr));
 end
 
 function benchmark = localLoadBenchmark(fileName)
-
     thisFile = mfilename('fullpath');
-    testsDir = fileparts(thisFile);
-    repoRoot = fileparts(fileparts(testsDir));
+    testDir = fileparts(thisFile);
+    repoRoot = fileparts(fileparts(fileparts(testDir)));
 
     f = fullfile(repoRoot, 'data', 'validation', 'cr3bp', 'processed', fileName);
-
     assert(isfile(f), 'Benchmark file not found: %s', f);
 
     S = load(f, 'benchmark');

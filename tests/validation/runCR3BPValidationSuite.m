@@ -1,27 +1,27 @@
 function results = runCR3BPValidationSuite()
 %RUNCR3BPVALIDATIONSUITE Run the main CR3BP validation tests.
-%
-% OUTPUT
-%   results : array of matlab.unittest.TestResult
-%
-% Usage:
-%   results = runCR3BPValidationSuite;
 
+    thisFile = mfilename('fullpath');
+    validationDir = fileparts(thisFile);
+    testsDir = fileparts(validationDir);
+    repoRoot = fileparts(testsDir);
+
+    cd(repoRoot);
     startup
 
     testFiles = { ...
-        'tests/validation/testJplCatalogData.m'
-        'tests/validation/testJplJacobiConsistency.m'
-        'tests/validation/testJplJacobiDriftEarthMoon.m'
-        'tests/validation/testJplHaloClosureEarthMoon.m'
-        'tests/validation/testContinuationPseudoArcEarthMoon.m'
-        'tests/validation/testSingleShootingCorrectorEarthMoon.m'
-        'tests/validation/testMultipleShootingCorrectorEarthMoon.m'
-        'tests/validation/testMonodromyMatrixEarthMoon.m'
-        'tests/validation/testLyapunovFamilyTrendEarthMoon.m'
+        fullfile(repoRoot,'tests','validation','testJplCatalogData.m')
+        fullfile(repoRoot,'tests','unit','cr3bp','testJplJacobiConsistency.m')
+        fullfile(repoRoot,'tests','unit','cr3bp','testJplJacobiDriftEarthMoon.m')
+        fullfile(repoRoot,'tests','unit','cr3bp','testJplHaloClosureEarthMoon.m')
+        fullfile(repoRoot,'tests','integration','cr3bp','testContinuationPseudoArcEarthMoon.m')
+        fullfile(repoRoot,'tests','unit','cr3bp','testSingleShootingCorrectorEarthMoon.m')
+        fullfile(repoRoot,'tests','integration','cr3bp','testMultipleShootingCorrectorEarthMoon.m')
+        fullfile(repoRoot,'tests','unit','cr3bp','testMonodromyMatrixEarthMoon.m')
+        fullfile(repoRoot,'tests','integration','cr3bp','testLyapunovFamilyTrendEarthMoon.m')
     };
 
-    allResults = matlab.unittest.TestResult.empty(0,1);
+    resultCells = cell(numel(testFiles),1);
 
     fprintf('\n============================================================\n');
     fprintf('Running CR3BP validation suite\n');
@@ -33,12 +33,10 @@ function results = runCR3BPValidationSuite()
         fprintf('------------------------------------------------------------\n');
 
         r = runtests(testFiles{k});
-        r = r(:);   % force column vector
-
-        allResults = [allResults; r]; %#ok<AGROW>
+        resultCells{k} = r(:);
     end
 
-    results = allResults;
+    results = vertcat(resultCells{:});
 
     fprintf('\n============================================================\n');
     fprintf('CR3BP validation suite complete\n');

@@ -112,8 +112,8 @@ end
 
 function benchmark = localLoadBenchmark(fileName)
     thisFile = mfilename('fullpath');
-    testsDir = fileparts(thisFile);
-    repoRoot = fileparts(fileparts(testsDir));
+    testDir = fileparts(thisFile);
+    repoRoot = fileparts(fileparts(fileparts(testDir)));
 
     f = fullfile(repoRoot, 'data', 'validation', 'cr3bp', 'processed', fileName);
     assert(isfile(f), 'Benchmark file not found: %s', f);
