@@ -49,7 +49,7 @@ end
 
 v0 = V(:,idx);
 
-% This Ross-style construction expects a real branch
+
 if norm(imag(v0)) > 1e-8
     error(['Selected ', branchType, ...
         ' eigenvector is complex. Choose a different orbit/member, or use a different manifold construction.']);

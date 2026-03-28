@@ -35,4 +35,4 @@ data/spice/**
 # Keep folder structure if desired
 !data/spice/
 !data/spice/**/
-!data/spice/**/.gitkeep
+!data/spice/**/.gitkeep.DS_Store
