@@ -2,146 +2,250 @@ clc;
 clear;
 close all;
 
-cd('/Users/gianlucamolinari/Desktop/AstroToolbox')
-startup
+% DEMO_HALO_FAMILY_CONTINUATION
+% Continue a halo family starting from two corrected JPL halo seeds.
 
-% ==========================================================
-% Halo family pseudo-arclength continuation demo
-% Earth-Moon L1 northern halo family
-% ==========================================================
+mu = 0.012150585609624;
 
-fprintf('\n');
-fprintf('============================================================\n');
-fprintf('Halo Family Continuation Demo\n');
-fprintf('============================================================\n');
+%% ------------------------------------------------------------------------
+% 1) User settings
+% -------------------------------------------------------------------------
+libr = 1;
+branch = 'N';
 
-% ----------------------------------------------------------
-% Retrieve two nearby JPL L1 northern halo seeds
-% ----------------------------------------------------------
+jplIndex1 = 1;
+jplIndex2 = 2;
+
+nMembers = 50;
+ds = 1e-3;
+
+%% ------------------------------------------------------------------------
+% 2) Query JPL halo family
+% -------------------------------------------------------------------------
 data = astro.cr3bp.queryJPLPeriodicOrbits( ...
     'sys', 'earth-moon', ...
     'family', 'halo', ...
-    'libr', 1, ...
-    'branch', 'N');
+    'libr', libr, ...
+    'branch', branch);
 
-seed1 = astro.cr3bp.parseJPLPeriodicOrbit(data, 1);
-seed2 = astro.cr3bp.parseJPLPeriodicOrbit(data, 2);
+fields = string(data.fields);
+rows = data.data;
 
-mu = seed1.mu;
-
-fprintf('\nSeed 1:\n');
-fprintf('  x0     = %.12f\n', seed1.state(1));
-fprintf('  z0     = %.12f\n', seed1.state(3));
-fprintf('  vy0    = %.12f\n', seed1.state(5));
-fprintf('  Period = %.12f TU\n', seed1.period);
-
-fprintf('\nSeed 2:\n');
-fprintf('  x0     = %.12f\n', seed2.state(1));
-fprintf('  z0     = %.12f\n', seed2.state(3));
-fprintf('  vy0    = %.12f\n', seed2.state(5));
-fprintf('  Period = %.12f TU\n', seed2.period);
-
-% ----------------------------------------------------------
-% Continue family
-% ----------------------------------------------------------
-nMembers = 30;
-ds = 5e-4;
-
-family = astro.cr3bp.continueHaloPseudoArc(seed1, seed2, nMembers, ds, mu);
-
-nFam = numel(family);
-if nFam < 2
-    error('Too few halo family members generated.');
+if jplIndex1 > numel(rows) || jplIndex2 > numel(rows)
+    error('Requested JPL indices exceed available halo rows.');
 end
 
-Cvals = [family.C];
-Tvals = [family.period];
-z0vals = arrayfun(@(s) s.u(2), family);
+%% ------------------------------------------------------------------------
+% 3) Build corrected seed 1
+% -------------------------------------------------------------------------
+seed1raw = localExtractSeed(rows{jplIndex1}, fields);
 
-fprintf('\nHalo family summary:\n');
-fprintf('  Stored members : %d\n', nFam);
-fprintf('  C range        : [%.12f, %.12f]\n', min(Cvals), max(Cvals));
-fprintf('  T range [TU]   : [%.12f, %.12f]\n', min(Tvals), max(Tvals));
-fprintf('  z0 range       : [%.12f, %.12f]\n', min(z0vals), max(z0vals));
+fprintf('JPL seed 1:\n');
+fprintf('  row  = %d\n', jplIndex1);
+fprintf('  x0   = %.16f\n', seed1raw.x0);
+fprintf('  z0   = %.16f\n', seed1raw.z0);
+fprintf('  vy0  = %.16f\n', seed1raw.vy0);
+fprintf('  T    = %.16f\n', seed1raw.T);
+
+corr1 = astro.cr3bp.differentialCorrectionHalo( ...
+    seed1raw.x0, seed1raw.z0, seed1raw.vy0, 0.5*seed1raw.T, mu, 30, 1e-12);
+
+if ~corr1.converged
+    error('Failed to correct halo seed 1.');
+end
+
+seed1 = struct();
+seed1.state = corr1.state0;
+seed1.period = corr1.period;
+
+fprintf('\nCorrected seed 1:\n');
+fprintf('  x0   = %.16f\n', seed1.state(1));
+fprintf('  z0   = %.16f\n', seed1.state(3));
+fprintf('  vy0  = %.16f\n', seed1.state(5));
+fprintf('  T    = %.16f\n', seed1.period);
+
+%% ------------------------------------------------------------------------
+% 4) Build corrected seed 2
+% -------------------------------------------------------------------------
+seed2raw = localExtractSeed(rows{jplIndex2}, fields);
+
+fprintf('\nJPL seed 2:\n');
+fprintf('  row  = %d\n', jplIndex2);
+fprintf('  x0   = %.16f\n', seed2raw.x0);
+fprintf('  z0   = %.16f\n', seed2raw.z0);
+fprintf('  vy0  = %.16f\n', seed2raw.vy0);
+fprintf('  T    = %.16f\n', seed2raw.T);
+
+corr2 = astro.cr3bp.differentialCorrectionHalo( ...
+    seed2raw.x0, seed2raw.z0, seed2raw.vy0, 0.5*seed2raw.T, mu, 30, 1e-12);
+
+if ~corr2.converged
+    error('Failed to correct halo seed 2.');
+end
+
+seed2 = struct();
+seed2.state = corr2.state0;
+seed2.period = corr2.period;
+
+fprintf('\nCorrected seed 2:\n');
+fprintf('  x0   = %.16f\n', seed2.state(1));
+fprintf('  z0   = %.16f\n', seed2.state(3));
+fprintf('  vy0  = %.16f\n', seed2.state(5));
+fprintf('  T    = %.16f\n', seed2.period);
+
+%% ------------------------------------------------------------------------
+% 5) Continue family
+% -------------------------------------------------------------------------
+family = astro.cr3bp.continueHaloPseudoArc(seed1, seed2, nMembers, ds, mu);
+nFam = numel(family);
+
+fprintf('\nFamily continuation complete.\n');
+fprintf('Stored members: %d\n', nFam);
+
+%% ------------------------------------------------------------------------
+% 6) Build orbit structs and diagnostics
+% -------------------------------------------------------------------------
+Tvals = zeros(nFam,1);
+xvals = zeros(nFam,1);
+zvals = zeros(nFam,1);
+vyvals = zeros(nFam,1);
+cerr = zeros(nFam,1);
+Cvals = zeros(nFam,1);
+
+for k = 1:nFam
+    state0 = family(k).state0;
+    T = family(k).period;
+
+    orbitk = astro.periodic.buildOrbitStruct(state0, T, mu, ...
+        struct('family','halo', ...
+               'libr', libr, ...
+               'system','earth-moon', ...
+               'source','halo pseudo-arclength continuation', ...
+               'dimension','3D'), ...
+        struct('verbose', false));
+
+    if k == 1
+        orbits = repmat(orbitk, nFam, 1);
+    end
+    orbits(k) = orbitk;
+
+    Tvals(k)  = T;
+    xvals(k)  = state0(1);
+    zvals(k)  = state0(3);
+    vyvals(k) = state0(5);
+    cerr(k)   = orbitk.closureError;
+    Cvals(k)  = family(k).C;
+end
+
+fprintf('\nFamily diagnostics\n');
+fprintf('------------------\n');
+fprintf('Min closure error: %.3e\n', min(cerr));
+fprintf('Max closure error: %.3e\n', max(cerr));
+fprintf('Min period       : %.16f\n', min(Tvals));
+fprintf('Max period       : %.16f\n', max(Tvals));
+fprintf('Min Jacobi C     : %.16f\n', min(Cvals));
+fprintf('Max Jacobi C     : %.16f\n', max(Cvals));
+
+%% ------------------------------------------------------------------------
+% 7) Plot family in 3D
+% -------------------------------------------------------------------------
+fig = figure;
+ax = axes(fig);
+hold(ax,'on');
+grid(ax,'on');
+box(ax,'on');
+
+for k = 1:nFam
+    X = orbits(k).x;
+    plot3(ax, X(:,1), X(:,2), X(:,3), 'LineWidth', 2.0);
+end
 
 L = astro.cr3bp.lagrangePoints(mu);
+plot3(ax, -mu, 0, 0, 'ko', 'MarkerFaceColor','k', 'MarkerSize', 6);
+plot3(ax, 1-mu, 0, 0, 'o', ...
+    'Color',[0.4 0.4 0.4], ...
+    'MarkerFaceColor',[0.7 0.7 0.7], ...
+    'MarkerSize', 8);
+plot3(ax, L.L1(1), L.L1(2), L.L1(3), 'yo', 'MarkerFaceColor','y', 'MarkerSize', 7);
+plot3(ax, L.L2(1), L.L2(2), L.L2(3), 'co', 'MarkerFaceColor','c', 'MarkerSize', 7);
 
-% ----------------------------------------------------------
-% 3D family plot
-% ----------------------------------------------------------
-figure('Color','w');
-hold on
-grid on
-box on
-axis equal
+axis(ax,'equal');
+xlabel(ax,'x');
+ylabel(ax,'y');
+zlabel(ax,'z');
+title(ax, sprintf('Halo family continuation from JPL seeds, L%d %s', libr, upper(branch)));
+view(ax,[35 25]);
 
-cmap = parula(max(nFam,16));
+%% ------------------------------------------------------------------------
+% 8) Trend plots
+% -------------------------------------------------------------------------
+figure;
+plot(1:nFam, Tvals, 'o-', 'LineWidth', 1.5);
+grid on;
+xlabel('Family member index');
+ylabel('Period');
+title('Halo family period trend');
 
-for k = 1:nFam
-    X = family(k).traj;
-    plot3(X(:,1), X(:,2), X(:,3), 'Color', cmap(k,:), 'LineWidth', 1.2);
+figure;
+plot(1:nFam, zvals, 'o-', 'LineWidth', 1.5);
+grid on;
+xlabel('Family member index');
+ylabel('z_0');
+title('Halo family z_0 trend');
+
+figure;
+plot(1:nFam, xvals, 'o-', 'LineWidth', 1.5);
+grid on;
+xlabel('Family member index');
+ylabel('x_0');
+title('Halo family x_0 trend');
+
+figure;
+plot(1:nFam, Cvals, 'o-', 'LineWidth', 1.5);
+grid on;
+xlabel('Family member index');
+ylabel('Jacobi constant');
+title('Halo family Jacobi constant trend');
+
+figure;
+semilogy(1:nFam, cerr, 'o-', 'LineWidth', 1.5);
+grid on;
+xlabel('Family member index');
+ylabel('Closure error');
+title('Halo family closure error');
+
+%% local helpers
+function seed = localExtractSeed(rawRow, fields)
+    row = rawRow;
+    while iscell(row) && numel(row) == 1
+        row = row{1};
+    end
+    row = row(:).';
+
+    seed = struct();
+    seed.x0  = localGetFieldValue(row, fields, 'x');
+    seed.y0  = localGetFieldValue(row, fields, 'y');
+    seed.z0  = localGetFieldValue(row, fields, 'z');
+    seed.vx0 = localGetFieldValue(row, fields, 'vx');
+    seed.vy0 = localGetFieldValue(row, fields, 'vy');
+    seed.vz0 = localGetFieldValue(row, fields, 'vz');
+    seed.T   = localGetFieldValue(row, fields, 'period');
+    seed.C   = localGetFieldValue(row, fields, 'jacobi');
 end
 
-plot3(-mu, 0, 0, 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
-plot3(1-mu, 0, 0, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
-plot3(L.L1(1), L.L1(2), 0, 'rs', 'MarkerSize', 7, 'LineWidth', 1.4);
+function val = localGetFieldValue(row, fields, targetName)
+    idx = find(strcmpi(fields, targetName), 1);
+    raw = row{idx};
 
-xlabel('$x~[-]$', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-ylabel('$y~[-]$', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-zlabel('$z~[-]$', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-title('$L_1$ Northern Halo Family (Pseudo-Arclength Continuation)', ...
-    'Interpreter', 'latex', 'FontSize', 15, 'FontWeight', 'bold');
-view(35, 25)
+    while iscell(raw) && numel(raw) == 1
+        raw = raw{1};
+    end
 
-colormap(cmap);
-cb = colorbar;
-ylabel(cb, 'Family index', 'FontSize', 12, 'FontWeight', 'bold');
-clim([1 max(nFam,2)]);
-
-% ----------------------------------------------------------
-% x-z projection
-% ----------------------------------------------------------
-figure('Color','w');
-hold on
-grid on
-box on
-axis equal
-
-for k = 1:nFam
-    X = family(k).traj;
-    plot(X(:,1), X(:,3), 'Color', cmap(k,:), 'LineWidth', 1.2);
+    if isnumeric(raw)
+        val = double(raw);
+    elseif isstring(raw) || ischar(raw)
+        val = str2double(raw);
+    else
+        error('Unsupported field type for "%s".', targetName);
+    end
 end
-
-plot(-mu, 0, 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
-plot(1-mu, 0, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
-plot(L.L1(1), 0, 'rs', 'MarkerSize', 7, 'LineWidth', 1.4);
-
-xlabel('$x~[-]$', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-ylabel('$z~[-]$', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-title('$x$-$z$ Projection of the $L_1$ Halo Family', ...
-    'Interpreter', 'latex', 'FontSize', 15, 'FontWeight', 'bold');
-
-% ----------------------------------------------------------
-% Jacobi and period trends
-% ----------------------------------------------------------
-figure('Color','w');
-
-subplot(1,2,1)
-hold on
-grid on
-box on
-plot(1:nFam, Cvals, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
-xlabel('Family member index', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Jacobi constant $C$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-title('$C$ Along Halo Family', 'Interpreter', 'latex', 'FontSize', 13, 'FontWeight', 'bold');
-
-subplot(1,2,2)
-hold on
-grid on
-box on
-plot(1:nFam, Tvals, 'o-', 'LineWidth', 1.2, 'MarkerSize', 6);
-xlabel('Family member index', 'FontSize', 12, 'FontWeight', 'bold');
-ylabel('Period [TU]', 'FontSize', 12, 'FontWeight', 'bold');
-title('Period Along Halo Family', 'Interpreter', 'latex','FontSize', 13, 'FontWeight', 'bold');
-
-fprintf('\nDone.\n');
