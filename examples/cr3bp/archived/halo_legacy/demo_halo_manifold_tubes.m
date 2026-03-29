@@ -51,7 +51,7 @@ nPhase = 36;
 nCircle = 24;
 epsManifold = 1e-7;
 
-seeds = astro.cr3bp.haloManifoldSeeds(x0, T, mu, nPhase, nCircle, epsManifold);
+seeds = astro.manifolds.makeManifoldSeeds(x0, T, mu, nPhase, nCircle, epsManifold);
 
 fprintf('\nGenerated halo tube seeds:\n');
 fprintf('  Phase points : %d\n', nPhase);
